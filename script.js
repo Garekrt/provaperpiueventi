@@ -9,7 +9,6 @@ async function signUp(email, password, nomeSocieta, Phone) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
-        // Assicurati che il tuo schema 'societa' supporti il campo 'CSF' (che qui manca, ma era nel tuo schema originale)
         const { error: societaError } = await supabase.from('societa').insert([{ nome: nomeSocieta, email: email, Phone:Phone, user_id: data.user.id }]);
         if (societaError) throw societaError;
 
@@ -43,8 +42,15 @@ async function signOut() {
     }
 }
 
-// Funzioni per l'index.html
-async function fetchAthletes() {
+//================================================================================
+// ⭐️ FUNZIONE PRINCIPALE: FETCH ATLETI (AGGIORNATA PER IL FILTRO) ⭐️
+//================================================================================
+/**
+ * Recupera gli atleti della società loggata.
+ * Può filtrare per un Evento specifico se viene fornito filterEventId.
+ * @param {string|null} filterEventId - ID dell'evento da usare come filtro.
+ */
+async function fetchAthletes(filterEventId = null) {
     try {
         const user = await supabase.auth.getUser();
         if (!user.data?.user?.id) {
@@ -62,12 +68,41 @@ async function fetchAthletes() {
         if (societyError || !society) throw societyError || new Error("Società non trovata.");
         
         const societyId = society.id;
+        let athletesData = [];
+        let error = null;
 
-        // 2. Recupera gli atleti associati a quell'ID società
-        const { data, error } = await supabase
-            .from('atleti')
-            .select('*')
-            .eq('society_id', societyId);
+        // ⭐️ LOGICA DI FILTRO ⭐️
+        if (filterEventId) {
+             // Recupera solo gli atleti iscritti all'evento X, con i dettagli dell'evento
+            const { data: subscriptionData, error: subError } = await supabase
+                .from('iscrizioni_eventi')
+                .select(`
+                    atleti (*),
+                    eventi (nome)
+                `)
+                .eq('evento_id', filterEventId);
+
+            if (subError) throw subError;
+            
+            // Mappa i dati per includere i dettagli dell'iscrizione nell'oggetto atleta
+            athletesData = subscriptionData
+                .filter(sub => sub.atleti.society_id === societyId)
+                .map(sub => ({ 
+                    ...sub.atleti, 
+                    iscritti_evento_nome: sub.eventi.nome,
+                    iscritti_evento_stato: 'Iscritto' // Lo stato 'Iscritto' è implicito dal filtro
+                }));
+
+        } else {
+            // Nessun filtro: recupera TUTTI gli atleti della società
+            const { data: allAthletes, error: fetchError } = await supabase
+                .from('atleti')
+                .select('*')
+                .eq('society_id', societyId);
+            
+            athletesData = allAthletes;
+            error = fetchError;
+        }
 
         if (error) throw error;
 
@@ -75,13 +110,14 @@ async function fetchAthletes() {
         const athleteList = document.getElementById('athleteList');
         if (athleteList) {
             athleteList.innerHTML = '';
-            data.forEach(athlete => addAthleteToTable(athlete)); // addAthleteToTable è in script2.js
+            // Passa il flag filterEventId (true/false) alla funzione per aggiornare la colonna Stato Iscrizione
+            athletesData.forEach(athlete => addAthleteToTable(athlete, !!filterEventId)); 
         }
         
-        // 3. Esegui le funzioni necessarie dopo il caricamento degli atleti
-        await updateAllCounters(); // Contatori in script2.js
-        await populateEventSelector('eventSelector'); // Popola il selettore eventi (nuovo, in script2.js)
-        await showAdminSection(); // Mostra/Nasconde la sezione admin (nuovo, in script2.js)
+        // Esegue le funzioni di aggiornamento (definite in script2.js)
+        await updateAllCounters(); 
+        await populateEventSelector('eventSelector'); 
+        await showAdminSection(); 
 
     } catch (error) {
         console.error("Errore nel recupero degli atleti:", error.message);
@@ -103,7 +139,7 @@ async function fetchSocietyNameOnLoad() {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
             document.getElementById('societyNameDisplay').textContent = societyData.nome;
-            // Recupera gli atleti al caricamento se l'utente è loggato
+            // Recupera gli atleti al caricamento (senza filtro)
             fetchAthletes();
         }
     }
@@ -111,30 +147,20 @@ async function fetchSocietyNameOnLoad() {
 
 
 //================================================================================
-// ⭐️ NUOVE FUNZIONI UTILITY PER GESTIONE ADMIN E EVENTI ⭐️
+// NUOVE FUNZIONI UTILITY PER GESTIONE ADMIN E EVENTI
 //================================================================================
 
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
-const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
+const ADMIN_USER_ID = 'PLACEHOLDER_YOUR_ADMIN_UUID'; 
 
-// Variabile per memorizzare l'ID della società collegata all'ADMIN_USER_ID
 let ADMIN_SOCIETY_ID = null;
 
-/**
- * Controlla se l'utente loggato è l'amministratore.
- * @returns {boolean} True se l'utente loggato corrisponde a ADMIN_USER_ID.
- */
 async function isCurrentUserAdmin() {
     const user = await supabase.auth.getUser();
     if (!user.data?.user?.id) return false;
     return user.data.user.id === ADMIN_USER_ID;
 }
 
-/**
- * Recupera e memorizza l'ID della Società collegata all'Amministratore.
- * Necessario per impostare la societa_organizzatrice_id degli eventi.
- * @returns {string|null} L'ID della società Admin o null in caso di errore.
- */
 async function getAdminSocietyId() {
     if (ADMIN_SOCIETY_ID) return ADMIN_SOCIETY_ID;
     
@@ -176,6 +202,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Esegue il fetch del nome società (che a sua volta chiama fetchAthletes)
     fetchSocietyNameOnLoad(); 
 });
