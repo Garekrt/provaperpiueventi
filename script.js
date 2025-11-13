@@ -168,3 +168,39 @@ async function fetchSocietyNameOnLoad() {
 }
 
 fetchSocietyNameOnLoad();
+// ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
+const ADMIN_USER_ID = 'PLACEHOLDER_YOUR_ADMIN_UUID'; 
+
+// Variabile per memorizzare l'ID della società collegata all'ADMIN_USER_ID
+let ADMIN_SOCIETY_ID = null;
+
+/**
+ * Controlla se l'utente loggato è l'amministratore.
+ * @returns {boolean} True se l'utente loggato corrisponde a ADMIN_USER_ID.
+ */
+async function isCurrentUserAdmin() {
+    [cite_start]const user = await supabase.auth.getUser(); [cite: 346]
+    [cite_start]if (!user.data?.user?.id) return false; [cite: 346]
+    return user.data.user.id === ADMIN_USER_ID;
+}
+
+/**
+ * Recupera e memorizza l'ID della Società collegata all'Amministratore.
+ * Necessario per impostare la societa_organizzatrice_id degli eventi.
+ * @returns {string|null} L'ID della società Admin o null in caso di errore.
+ */
+async function getAdminSocietyId() {
+    if (ADMIN_SOCIETY_ID) return ADMIN_SOCIETY_ID;
+    
+    const { data: societyData, error } = await supabase
+        [cite_start].from('societa') [cite: 347]
+        .select('id')
+        [cite_start].eq('user_id', ADMIN_USER_ID) [cite: 347]
+        .single();
+
+    if (error || !societyData) {
+        [cite_start]console.error('Errore nel recupero dell\'ID della società admin o società admin non trovata:', error?.message); [cite: 347, 348]
+        return null;
+    }
+    ADMIN_SOCIETY_ID = societyData.id;
+    return ADMIN_SOCIETY_ID;
