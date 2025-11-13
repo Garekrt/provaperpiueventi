@@ -371,7 +371,7 @@ async function showAdminSection() {
  * Funzione ADMIN: Creazione di un nuovo Evento.
  * Utilizza l'ID della Società Admin pre-caricato.
  */
-async function createEvent() {
+async function handleCreateEvent() {
     if (!await isCurrentUserAdmin()) {
         alert('Accesso negato. Solo l\'amministratore può creare eventi.');
         return;
