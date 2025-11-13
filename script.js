@@ -115,7 +115,7 @@ async function fetchSocietyNameOnLoad() {
 //================================================================================
 
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
-const ADMIN_USER_ID = 'PLACEHOLDER_YOUR_ADMIN_UUID'; 
+const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
 
 // Variabile per memorizzare l'ID della società collegata all'ADMIN_USER_ID
 let ADMIN_SOCIETY_ID = null;
