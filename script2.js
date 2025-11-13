@@ -1,4 +1,4 @@
-// ASSUNZIONE: La variabile 'supabase' è definita e inizializzata altrove (in script.js).
+// ASSUNZIONE: La variabile 'supabase' è definita e inizializzata in script.js.
 
 //================================================================================
 // 1. GESTIONE LIMITI MASSIMI E CONTEGGIO UNIFICATO KIDS
@@ -96,12 +96,10 @@ function calculateClassAndWeight(birthDate, gender) {
     const currentYear = today.getFullYear();
     const age = currentYear - birthYear;
     
-    // Elementi HTML per aggiornare classe e categoria
     const classeSelect = document.getElementById('classe');
     const weightSelect = document.getElementById('weightCategory');
 
     let classe = "";
-    let weightCategory = "";
 
     // 1. Calcolo Classe
     if (birthYear >= 2010 && birthYear <= 2013) {
@@ -131,10 +129,7 @@ function calculateClassAndWeight(birthDate, gender) {
     } else if (birthYear >= 1990 && birthYear <= 2007) {
           classe = "Seniores";
           classeSelect.innerHTML = `<option value="Seniores">Seniores</option>`;
-    } else if (birthYear >= 2022) {
-        classe = "ERROR";
-        classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
-    } else if (birthYear <=1959) {
+    } else if (birthYear >= 2022 || birthYear <=1959) {
         classe = "ERROR";
         classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
     } else {
@@ -143,10 +138,8 @@ function calculateClassAndWeight(birthDate, gender) {
     }
 
     // 2. Calcolo Categoria di Peso (Logica semplificata)
-    // Svuota il selettore e lo ripopola solo se necessario
     weightSelect.innerHTML = '<option value="">N/D</option>';
     if (classe === "Esordienti" || classe === "Cadetti") {
-        // Logica per le categorie Kumite (solo per esempio)
         if (gender === 'M') {
             weightSelect.innerHTML += '<option value="M-45">M -45 Kg</option>';
             weightSelect.innerHTML += '<option value="M-50">M -50 Kg</option>';
@@ -160,15 +153,12 @@ function calculateClassAndWeight(birthDate, gender) {
     } else {
         weightSelect.disabled = true;
     }
-
-    // Qui puoi anche aggiornare altri campi, se necessario, in base alla logica di specialità/classe
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const birthdateInput = document.getElementById('birthdate');
     const genderSelect = document.getElementById('gender');
     
-    // Listener per ricalcolare classe e peso quando cambiano data o genere
     if (birthdateInput && genderSelect) {
         const recalculate = () => {
             const birthDate = birthdateInput.value;
@@ -182,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
         genderSelect.addEventListener('change', recalculate);
     }
 
-    // Listener per il form di aggiunta atleti
     const athleteForm = document.getElementById('athleteForm');
     if (athleteForm) {
         athleteForm.addEventListener('submit', async (e) => {
@@ -208,17 +197,20 @@ async function removeAthlete(athleteId, rowElement) {
         console.error('Errore durante la rimozione:', error.message);
         alert('Errore durante la rimozione dell\'atleta.');
     } else {
-        rowElement.remove(); // Rimuovi la riga dalla tabella
-        await updateAllCounters(); // Aggiorna i contatori
+        rowElement.remove(); 
+        await updateAllCounters(); 
     }
 }
 
-// Funzione per popolare la tabella degli atleti loggati
-function addAthleteToTable(athlete) {
+/**
+ * Popola una singola riga nella tabella atleti.
+ * @param {object} athlete - L'oggetto atleta.
+ * @param {boolean} isFiltered - True se la tabella è stata filtrata da un evento specifico.
+ */
+function addAthleteToTable(athlete, isFiltered = false) { 
     const athleteList = document.getElementById('athleteList');
     const row = athleteList.insertRow();
 
-    // Inserimento dati atleta
     row.insertCell().textContent = athlete.first_name;
     row.insertCell().textContent = athlete.last_name;
     row.insertCell().textContent = athlete.gender;
@@ -229,7 +221,17 @@ function addAthleteToTable(athlete) {
     row.insertCell().textContent = athlete.weight_category || 'N/D';
     row.insertCell().textContent = athlete.society_id;
 
-    // Cella delle Azioni
+    // ⭐️ NUOVA CELLA: Stato Iscrizione all'Evento ⭐️
+    const statusCell = row.insertCell();
+    if (isFiltered) {
+        // Se la riga proviene da un fetch filtrato, mostra il nome/stato dell'evento
+        statusCell.textContent = `${athlete.iscritti_evento_nome} (${athlete.iscritti_evento_stato})`;
+        statusCell.style.backgroundColor = '#d4edda'; // Indica che è iscritto all'evento selezionato
+    } else {
+        // Altrimenti, un messaggio generico
+        statusCell.textContent = 'Non filtrato per evento'; 
+    }
+    
     const actionsCell = row.insertCell();
     
     // 1. Pulsante Rimuovi (esistente)
@@ -246,7 +248,7 @@ function addAthleteToTable(athlete) {
     subscribeButton.addEventListener('click', () => {
         const selectedEventId = document.getElementById('eventSelector').value;
         if (selectedEventId) {
-            subscribeAthleteToEvent(athlete.id, selectedEventId); // Chiama la nuova funzione
+            subscribeAthleteToEvent(athlete.id, selectedEventId);
         } else {
             alert("Seleziona prima un evento dal menu a tendina sopra.");
         }
@@ -267,7 +269,8 @@ async function addAthlete() {
     const belt = document.getElementById('belt').value;
     
     const user = await supabase.auth.getUser();
-    if (!user.data?.user?.id) {
+    // ... (Logica di recupero societyId e controlli limiti) ...
+     if (!user.data?.user?.id) {
         alert("Utente non autenticato.");
         return;
     }
@@ -305,9 +308,9 @@ async function addAthlete() {
             birthdate: birthdate,
             classe: classe,
             specialty: specialty,
-            weight_category: weightCategory || null, // Inserisce null se vuoto
+            weight_category: weightCategory || null,
             belt: belt,
-            society_id: societyId // Assegna l'atleta alla società
+            society_id: societyId
         }])
         .select()
         .single();
@@ -317,7 +320,14 @@ async function addAthlete() {
         alert('Errore nell\'aggiunta dell\'atleta.');
     } else {
         alert('Atleta aggiunto con successo!');
-        addAthleteToTable(newAthlete);
+        // Se non ci sono filtri attivi, aggiungi la riga alla tabella
+        const athleteList = document.getElementById('athleteList');
+        if (!athleteList.querySelector('tr')) { 
+             // Se la tabella è vuota (magari c'era un filtro attivo), ricarica tutti
+             fetchAthletes();
+        } else {
+             addAthleteToTable(newAthlete);
+        }
         document.getElementById('athleteForm').reset();
         await updateAllCounters();
     }
@@ -344,19 +354,15 @@ async function getSpecialtyCount(specialty) {
 
 
 //================================================================================
-// ⭐️ NUOVE FUNZIONI LOGICA EVENTI ⭐️
+// ⭐️ NUOVE FUNZIONI LOGICA EVENTI, CREAZIONE (ADMIN) E FILTRO ⭐️
 //================================================================================
 
-/**
- * Funzione ADMIN: Mostra la sezione di creazione Eventi solo se l'utente è Admin.
- * Dipende da isCurrentUserAdmin() e getAdminSocietyId() in script.js.
- */
 async function showAdminSection() {
     const adminSection = document.getElementById('adminEventCreation');
     if (adminSection) {
         if (await isCurrentUserAdmin()) {
             adminSection.style.display = 'block';
-            await getAdminSocietyId(); // Pre-carica l'ID Società Admin
+            await getAdminSocietyId(); 
             const adminSocietyIdDisplay = document.getElementById('adminSocietyIdDisplay');
             if (adminSocietyIdDisplay && ADMIN_SOCIETY_ID) {
                 adminSocietyIdDisplay.textContent = ADMIN_SOCIETY_ID;
@@ -368,10 +374,9 @@ async function showAdminSection() {
 }
 
 /**
- * Funzione ADMIN: Creazione di un nuovo Evento.
- * Utilizza l'ID della Società Admin pre-caricato.
+ * Funzione ADMIN: Creazione di un nuovo Evento (Rinominata per evitare conflitto DOM).
  */
-async function handleCreateEvent() {
+async function handleCreateEvent() { // ⭐️ RINOMINATA DA createEvent
     if (!await isCurrentUserAdmin()) {
         alert('Accesso negato. Solo l\'amministratore può creare eventi.');
         return;
@@ -402,7 +407,7 @@ async function handleCreateEvent() {
             data_evento: data_evento,
             luogo: luogo,
             quota_iscrizione: quota,
-            societa_organizzatrice_id: adminSocietyId // Usa l'ID della Società Admin
+            societa_organizzatrice_id: adminSocietyId 
         }]);
 
     if (error) {
@@ -411,7 +416,7 @@ async function handleCreateEvent() {
     } else {
         alert('Evento creato con successo!');
         document.getElementById("eventForm").reset();
-        await populateEventSelector('eventSelector'); // Aggiorna la lista eventi
+        await populateEventSelector('eventSelector'); 
     }
 }
 
@@ -433,7 +438,7 @@ async function fetchAvailableEvents() {
 }
 
 /**
- * Popola il selettore degli eventi nell'interfaccia utente della società.
+ * Popola il selettore degli eventi.
  */
 async function populateEventSelector(selectorId) {
     const selector = document.getElementById(selectorId);
@@ -484,5 +489,35 @@ async function subscribeAthleteToEvent(athleteId, eventId) {
         alert(`Errore durante l'iscrizione: ${error.message}`);
     } else {
         alert('Atleta iscritto all\'evento con successo!');
+        // Ricarica la lista per mostrare lo stato di iscrizione se un filtro è attivo
+        const currentEvent = document.getElementById('eventSelector').value;
+        if (currentEvent) {
+            filterAthletesBySelectedEvent(); 
+        } else {
+            // Rimuovi la riga e ricarica, o ricarica l'intera lista per coerenza
+            fetchAthletes(); 
+        }
     }
+}
+
+
+/**
+ * Ricarica la tabella atleti filtrando solo quelli iscritti all'evento selezionato.
+ */
+async function filterAthletesBySelectedEvent() {
+    const eventId = document.getElementById('eventSelector').value;
+    if (!eventId) {
+        alert("Seleziona un evento prima di filtrare.");
+        return;
+    }
+    // Chiama la funzione principale in script.js con il filtro
+    await fetchAthletes(eventId); 
+}
+
+/**
+ * Resetta la tabella mostrando tutti gli atleti della società.
+ */
+async function resetAthleteFilter() {
+    // Chiama la funzione principale in script.js senza filtro
+    await fetchAthletes(); 
 }
