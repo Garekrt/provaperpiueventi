@@ -1,4 +1,4 @@
-// ASSUNZIONE: La variabile 'supabase' è definita e inizializzata altrove.
+// ASSUNZIONE: La variabile 'supabase' è definita e inizializzata altrove (in script.js).
 
 //================================================================================
 // 1. GESTIONE LIMITI MASSIMI E CONTEGGIO UNIFICATO KIDS
@@ -37,548 +37,452 @@ async function getKidsCount() {
         .in('specialty', specialtyList); 
 
     if (error) {
-        console.error("Errore nel conteggio atleti KIDS:", error.message);
-        return { count: 0, error: error };
+        console.error("Errore nel conteggio KIDS:", error.message);
+        return 0;
     }
-    return { count: count || 0, error: null };
+    return count;
 }
 
-// Funzione per aggiornare il contatore visualizzato
-async function updateAthleteCountDisplay(specialty) {
-    let currentCount = 0;
-    let maxAthletes = getMaxAthletesForSpecialty(specialty);
-    let counterElementId = '';
+// Funzione per aggiornare i contatori di tutte le specialità
+async function updateAllCounters() {
+    const specialties = ["Kumite", "Kata", "ParaKarate"];
     
-    // Logica per le specialità unificate KIDS
-    if (specialty === "GTP-Tecnica-libera" || specialty === "GTP-Kata") {
-        const result = await getKidsCount();
-        if (result.error) return;
-        currentCount = result.count;
-        counterElementId = 'KIDSAthleteCountDisplay';
-    } 
-    // Logica per le specialità singole
-    else {
-        // Mappatura per l'ID HTML
-        counterElementId = (specialty === "Kumite") ? 'kumiteAthleteCountDisplay' : 
-                           (specialty === "Kata") ? 'kataAthleteCountDisplay' : 
-                           (specialty === "ParaKarate") ? 'ParaKarateAthleteCountDisplay' : '';
-
-        // Query per il conteggio standard
-        const { 
-            count, 
-            error: countError 
-        } = await supabase
+    for (const specialty of specialties) {
+        const maxLimit = getMaxAthletesForSpecialty(specialty);
+        
+        const { count, error } = await supabase
             .from('atleti')
-            .select('*', { 
-                count: 'exact', 
-                head: true 
-            })
+            .select('id', { count: 'exact', head: true })
             .eq('specialty', specialty);
 
-        if (countError) {
-            console.error(`Errore nel conteggio degli atleti per ${specialty}:`, countError.message);
-            return;
+        if (error) {
+            console.error(`Errore nel conteggio ${specialty}:`, error.message);
+            continue;
         }
-        currentCount = count || 0;
+
+        const displayElement = document.getElementById(`${specialty}AthleteCountDisplay`);
+        if (displayElement) {
+            displayElement.textContent = `${count} / ${maxLimit}`;
+            if (count >= maxLimit) {
+                displayElement.style.color = 'red';
+            } else {
+                displayElement.style.color = 'green';
+            }
+        }
     }
-
-    const remainingSlots = maxAthletes - currentCount;
-
-    const counterElement = document.getElementById(counterElementId);
-    if (counterElement) {
-        const displaySpecialty = (counterElementId === 'KIDSAthleteCountDisplay') ? 'KIDS' : specialty;
-        counterElement.textContent = `Posti disponibili per ${displaySpecialty}: ${remainingSlots} / ${maxAthletes}`;
+    
+    // Aggiorna il conteggio KIDS (unificato)
+    const kidsCount = await getKidsCount();
+    const kidsLimit = getMaxAthletesForSpecialty('GTP-Tecnica-libera');
+    const kidsDisplayElement = document.getElementById('KIDSAthleteCountDisplay');
+    if (kidsDisplayElement) {
+        kidsDisplayElement.textContent = `${kidsCount} / ${kidsLimit}`;
+        if (kidsCount >= kidsLimit) {
+            kidsDisplayElement.style.color = 'red';
+        } else {
+            kidsDisplayElement.style.color = 'green';
+        }
     }
 }
 
-// Funzione per chiamare l'aggiornamento di tutti i contatori rilevanti
-async function updateAllCounters() {
-    await updateAthleteCountDisplay("Kumite");
-    await updateAthleteCountDisplay("Kata");
-    await updateAthleteCountDisplay("ParaKarate");
-    // Aggiorna il contatore KIDS (usando una delle due specialità per innescare la logica unificata)
-    await updateAthleteCountDisplay("GTP-Kata"); 
+//================================================================================
+// 2. GESTIONE FORM E LOGICA DI CLASSE
+//================================================================================
+
+function calculateClassAndWeight(birthDate, gender) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const birthYear = birth.getFullYear();
+    const currentYear = today.getFullYear();
+    const age = currentYear - birthYear;
+    
+    // Elementi HTML per aggiornare classe e categoria
+    const classeSelect = document.getElementById('classe');
+    const weightSelect = document.getElementById('weightCategory');
+
+    let classe = "";
+    let weightCategory = "";
+
+    // 1. Calcolo Classe
+    if (birthYear >= 2010 && birthYear <= 2013) {
+        classe = "Esordienti";
+        classeSelect.innerHTML = `<option value="Esordienti">Esordienti</option>`;
+    } else if (birthYear >= 2008 && birthYear <= 2009) {
+        classe = "Cadetti";
+        classeSelect.innerHTML = `<option value="Cadetti">Cadetti</option>`;
+    } else if (birthYear >= 2006 && birthYear <= 2007) {
+        classe = "Juniores";
+        classeSelect.innerHTML = `<option value="Juniores">Juniores</option>`;
+    } else if (birthYear >= 2003 && birthYear <= 2005) {
+        classe = "U21";
+        classeSelect.innerHTML = `<option value="U21">U21</option>`;
+    } else if (birthYear >= 2014 && birthYear <= 2015) {
+        classe = "Ragazzi";
+        classeSelect.innerHTML = `<option value="Ragazzi">Ragazzi</option>`;
+    } else if (birthYear >= 2016 && birthYear <= 2017) {
+        classe = "Fanciulli";
+        classeSelect.innerHTML = `<option value="Fanciulli">Fanciulli</option>`;
+    } else if (birthYear >= 2018 && birthYear <= 2019) {
+        classe = "Bambini U8";
+        classeSelect.innerHTML = `<option value="Bambini_U8">Bambini U8</option>`;
+    } else if (birthYear >= 2020 && birthYear <= 2021) {
+         classe = "Bambini U6";
+         classeSelect.innerHTML = `<option value="Bambini_U6">Bambini U6</option>`;
+    } else if (birthYear >= 1990 && birthYear <= 2007) {
+          classe = "Seniores";
+          classeSelect.innerHTML = `<option value="Seniores">Seniores</option>`;
+    } else if (birthYear >= 2022) {
+        classe = "ERROR";
+        classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
+    } else if (birthYear <=1959) {
+        classe = "ERROR";
+        classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
+    } else {
+        classe = "Master";
+        classeSelect.innerHTML = `<option value="Master">Master</option>`;
+    }
+
+    // 2. Calcolo Categoria di Peso (Logica semplificata)
+    // Svuota il selettore e lo ripopola solo se necessario
+    weightSelect.innerHTML = '<option value="">N/D</option>';
+    if (classe === "Esordienti" || classe === "Cadetti") {
+        // Logica per le categorie Kumite (solo per esempio)
+        if (gender === 'M') {
+            weightSelect.innerHTML += '<option value="M-45">M -45 Kg</option>';
+            weightSelect.innerHTML += '<option value="M-50">M -50 Kg</option>';
+            weightSelect.innerHTML += '<option value="M-55">M -55 Kg</option>';
+        } else if (gender === 'F') {
+            weightSelect.innerHTML += '<option value="F-40">F -40 Kg</option>';
+            weightSelect.innerHTML += '<option value="F-45">F -45 Kg</option>';
+            weightSelect.innerHTML += '<option value="F-50">F -50 Kg</option>';
+        }
+        weightSelect.disabled = false;
+    } else {
+        weightSelect.disabled = true;
+    }
+
+    // Qui puoi anche aggiornare altri campi, se necessario, in base alla logica di specialità/classe
 }
 
-//================================================================================
-// 2. LOGICA DI INSERIMENTO E GESTIONE DATI
-//================================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const birthdateInput = document.getElementById('birthdate');
+    const genderSelect = document.getElementById('gender');
+    
+    // Listener per ricalcolare classe e peso quando cambiano data o genere
+    if (birthdateInput && genderSelect) {
+        const recalculate = () => {
+            const birthDate = birthdateInput.value;
+            const gender = genderSelect.value;
+            if (birthDate && gender) {
+                calculateClassAndWeight(birthDate, gender);
+            }
+        };
+        
+        birthdateInput.addEventListener('change', recalculate);
+        genderSelect.addEventListener('change', recalculate);
+    }
 
+    // Listener per il form di aggiunta atleti
+    const athleteForm = document.getElementById('athleteForm');
+    if (athleteForm) {
+        athleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await addAthlete();
+        });
+    }
+});
+
+
+// Funzione per rimuovere un atleta dal database
+async function removeAthlete(athleteId, rowElement) {
+    if (!confirm("Sei sicuro di voler rimuovere questo atleta?")) {
+        return;
+    }
+
+    const { error } = await supabase
+        .from('atleti')
+        .delete()
+        .eq('id', athleteId);
+
+    if (error) {
+        console.error('Errore durante la rimozione:', error.message);
+        alert('Errore durante la rimozione dell\'atleta.');
+    } else {
+        rowElement.remove(); // Rimuovi la riga dalla tabella
+        await updateAllCounters(); // Aggiorna i contatori
+    }
+}
+
+// Funzione per popolare la tabella degli atleti loggati
 function addAthleteToTable(athlete) {
     const athleteList = document.getElementById('athleteList');
     const row = athleteList.insertRow();
 
-    const nameCell = row.insertCell(); nameCell.textContent = athlete.first_name;
-    const lastNameCell = row.insertCell(); lastNameCell.textContent = athlete.last_name;
-    const genderCell = row.insertCell(); genderCell.textContent = athlete.gender;
-    const birthdateCell = row.insertCell(); birthdateCell.textContent = athlete.birthdate;
-    const beltCell = row.insertCell(); beltCell.textContent = athlete.belt;
-    const classeCell = row.insertCell(); classeCell.textContent = athlete.classe;
-    const specialtyCell = row.insertCell(); specialtyCell.textContent = athlete.specialty; // Indice 6
-    const weightCategoryCell = row.insertCell(); weightCategoryCell.textContent = athlete.weight_category || '';
-    const societyCell = row.insertCell(); societyCell.textContent = athlete.society_id;
+    // Inserimento dati atleta
+    row.insertCell().textContent = athlete.first_name;
+    row.insertCell().textContent = athlete.last_name;
+    row.insertCell().textContent = athlete.gender;
+    row.insertCell().textContent = athlete.birthdate;
+    row.insertCell().textContent = athlete.belt;
+    row.insertCell().textContent = athlete.classe;
+    row.insertCell().textContent = athlete.specialty;
+    row.insertCell().textContent = athlete.weight_category || 'N/D';
+    row.insertCell().textContent = athlete.society_id;
 
+    // Cella delle Azioni
     const actionsCell = row.insertCell();
+    
+    // 1. Pulsante Rimuovi (esistente)
     const removeButton = document.createElement('button');
     removeButton.textContent = 'Rimuovi';
-    removeButton.classList.add('btn', 'btn-danger', 'btn-sm');
+    removeButton.classList.add('btn', 'btn-danger', 'btn-sm', 'mb-1');
     removeButton.addEventListener('click', () => removeAthlete(athlete.id, row));
     actionsCell.appendChild(removeButton);
+
+    // 2. Pulsante Iscrivi all'Evento (NUOVO)
+    const subscribeButton = document.createElement('button');
+    subscribeButton.textContent = 'Iscrivi Evento';
+    subscribeButton.classList.add('btn', 'btn-success', 'btn-sm', 'mt-1');
+    subscribeButton.addEventListener('click', () => {
+        const selectedEventId = document.getElementById('eventSelector').value;
+        if (selectedEventId) {
+            subscribeAthleteToEvent(athlete.id, selectedEventId); // Chiama la nuova funzione
+        } else {
+            alert("Seleziona prima un evento dal menu a tendina sopra.");
+        }
+    });
+    actionsCell.appendChild(subscribeButton);
 }
 
-async function addAthlete() {
-    const firstName = document.getElementById("firstName").value;
-    const lastName = document.getElementById("lastName").value;
-    const gender = document.querySelector('input[name="gender"]:checked');
-    const birthdate = document.getElementById("birthdate").value;
-    const classe = document.getElementById("classe").value;
-    const specialty = document.getElementById("specialty").value;
-    const weightCategory = document.getElementById("weightCategory").value;
-    const belt = document.getElementById("belt").value;
-    const societyName = document.getElementById("society").value;
 
-    if (!firstName || !lastName || !gender || !gender.checked || !birthdate || !classe || !specialty || !belt || !societyName) {
-        alert("Mancano campi obbligatori.");
+// Funzione per l'aggiunta di un nuovo atleta
+async function addAthlete() {
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const gender = document.getElementById('gender').value;
+    const birthdate = document.getElementById('birthdate').value;
+    const classe = document.getElementById('classe').value;
+    const specialty = document.getElementById('specialty').value;
+    const weightCategory = document.getElementById('weightCategory').value;
+    const belt = document.getElementById('belt').value;
+    
+    const user = await supabase.auth.getUser();
+    if (!user.data?.user?.id) {
+        alert("Utente non autenticato.");
         return;
     }
 
-    // Trova l'ID della società
-    const { data: societyData, error: societyError } = await supabase
+    // Recupera l'ID della società dell'utente loggato
+    const { data: society, error: societyError } = await supabase
         .from('societa')
         .select('id')
-        .eq('nome', societyName)
+        .eq('user_id', user.data.user.id)
         .single();
 
-    if (societyError || !societyData) {
-        alert('Società non trovata o errore di accesso.');
+    if (societyError || !society) {
+        console.error('Errore nel recupero della società:', societyError.message);
+        alert('Impossibile trovare la Società associata all\'utente.');
         return;
     }
-    const societyId = societyData.id;
+    const societyId = society.id;
 
-    const maxAthletes = getMaxAthletesForSpecialty(specialty);
-    let currentCount = 0;
+    // Verifica i limiti prima di inserire
+    const currentSpecialtyCount = await getSpecialtyCount(specialty);
+    const maxLimit = getMaxAthletesForSpecialty(specialty);
     
-    // LOGICA DI PRE-VERIFICA DEL LIMITE
-    if (specialty === "GTP-Tecnica-libera" || specialty === "GTP-Kata") {
-        const result = await getKidsCount();
-        if (result.error) return;
-        currentCount = result.count;
-    } else {
-        const { count, error: countError } = await supabase
-            .from('atleti')
-            .select('*', { count: 'exact', head: true }) 
-            .eq('specialty', specialty);
-            
-        if (countError) {
-            console.error('Errore nel conteggio degli atleti:', countError.message);
-            alert('Errore interno del server.');
-            return;
-        }
-        currentCount = count || 0;
-    }
-    
-    // Controllo del limite
-    if (currentCount >= maxAthletes) {
-        alert(`Siamo spiacenti, il numero massimo di iscritti alla categoria ${specialty} (limite: ${maxAthletes}) è stato raggiunto.`);
+    if (currentSpecialtyCount >= maxLimit) {
+        alert(`Limite massimo di ${maxLimit} atleti per la specialità ${specialty} raggiunto.`);
         return;
     }
 
-    // Inserisci l'atleta
+    // Inserimento nel database
     const { data: newAthlete, error } = await supabase
         .from('atleti')
         .insert([{
             first_name: firstName,
             last_name: lastName,
-            gender: gender.value,
+            gender: gender,
             birthdate: birthdate,
             classe: classe,
             specialty: specialty,
-            weight_category: weightCategory,
+            weight_category: weightCategory || null, // Inserisce null se vuoto
             belt: belt,
-            society_id: societyId
-        }]).select();
+            society_id: societyId // Assegna l'atleta alla società
+        }])
+        .select()
+        .single();
 
     if (error) {
-        console.error('Errore aggiunta atleta:', error.message);
-        alert('Errore durante l\'aggiunta dell\'atleta.');
-    } else if (newAthlete && newAthlete.length > 0) {
+        console.error('Errore nell\'aggiunta dell\'atleta:', error.message);
+        alert('Errore nell\'aggiunta dell\'atleta.');
+    } else {
         alert('Atleta aggiunto con successo!');
-        addAthleteToTable(newAthlete[0]); 
-
-        // Aggiorna tutti i contatori
+        addAthleteToTable(newAthlete);
+        document.getElementById('athleteForm').reset();
         await updateAllCounters();
-        
-        // ⭐️ LOGICA DI PULIZIA CAMPI AGGIUNTA QUI ⭐️
-        document.getElementById("firstName").value = "";
-        document.getElementById("lastName").value = "";
-        
-        const checkedGender = document.querySelector('input[name="gender"]:checked');
-        if (checkedGender) {
-            checkedGender.checked = false;
-        }
-
-        // Resetta le selezioni del form
-        document.getElementById("birthdate").value = ""; 
-        document.getElementById("classe").value = "";
-        document.getElementById("specialty").value = "";
-        document.getElementById("weightCategory").value = "";
-        document.getElementById("belt").value = "";
-        
-        // Chiama le tue funzioni per resettare le opzioni visualizzate
-        // Assumo che queste funzioni debbano esistere nel tuo script
-        // toggleWeightCategory(); 
-        // updateBeltOptions(); 
-    }
-}async function fetchAthletes() {
-    const athleteList = document.getElementById('athleteList');
-    athleteList.innerHTML = ''; 
-
-    const user = await supabase.auth.getUser();
-    if (!user.data ?.user ?.id) {
-        console.log("Utente non loggato.");
-        return;
-    }
-
-    const { data: societyData, error: societyError } = await supabase
-        .from('societa')
-        .select('id')
-        .eq('user_id', user.data.user.id)
-        .single();
-        
-    if (societyError || !societyData) {
-        console.error('Nessuna società trovata per questo utente o errore:', societyError?.message);
-        return;
-    }
-
-    const societyId = societyData.id;
-
-    const { data: athletesData, error: athletesError } = await supabase  
-       .from('atleti')
-       .select('*')
-       .eq('society_id', societyId);
-       
-    if (athletesError) {
-        console.error('Errore nel recupero degli atleti:', athletesError.message);
-        return;
-    }
-
-    if (athletesData) {
-        athletesData.forEach(athlete => addAthleteToTable(athlete));
-    }
-
-    // Aggiorna tutti i contatori al caricamento della pagina
-    await updateAllCounters();
-}
-
-async function removeAthlete(athleteId, rowToRemove) {
-    if (confirm('Sei sicuro di voler rimuovere questo atleta?')) {
-        const specialtyToRemove = rowToRemove.cells[6].textContent; 
-        
-        const { error } = await supabase
-            .from('atleti')
-            .delete()
-            .eq('id', athleteId);
-            
-        if (error) {
-            console.error('Errore durante la rimozione dell\'atleta:', error.message);
-            alert('Errore durante la rimozione dell\'atleta.');
-        } else {
-            alert('Atleta rimosso con successo!');
-            rowToRemove.remove();
-            
-            // Aggiorna tutti i contatori dopo la rimozione
-            await updateAllCounters();
-        }
     }
 }
 
-function toggleWeightCategory() {
-const specialty = document.getElementById("specialty").value;
-const gender = document.querySelector('input[name="gender"]:checked').value;
-const weightCategoryField = document.getElementById("weightCategory");
-if (specialty === "Kumite" && classe === "Esordienti") {
-     // Abilita la selezione delle categorie di peso in base al genere
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
 
-      if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-             <option value="-40">-40</option>
-             <option value="-45">-45</option>
-             <option value="-50">-50</option>
-             <option value="-55">-55</option>
-             <option value="+55">+55</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-40">-40</option>
-             <option value="-45">-45</option>
-             <option value="-50">-50</option>
-             <option value="+50">+50</option>
-         `;
-     }
-} else if (specialty === "Kumite" && classe === "Cadetti") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
-
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-<option value="-52">-52</option>
-             <option value="-57">-57</option>
-             <option value="-63">-63</option>
-             <option value="-70">-70</option>
-             <option value="+70">+70</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-47">-47</option>
-             <option value="-54">-54</option>
-            <option value="+54">+54</option>
-         `;
-     }
-} else if (specialty === "Kumite" && classe === "Juniores") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
-
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-             <option value="-55">-55</option>
-             <option value="-61">-61</option>
-             <option value="-68">-68</option>
-             <option value="-76">-76</option>
-             <option value="+76">+76</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-48">-48</option>
-             <option value="-53">-53</option>
-             <option value="-59">-59</option>
-             <option value="+59">+59</option>
-         `;
-     }
-} else if (specialty === "Kumite" && classe === "Seniores") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
-
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-             <option value="-60">-60</option>
-             <option value="-67">-67</option>
-             <option value="-75">-75</option>
-             <option value="-84">-84</option>
-             <option value="+84">+84</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-50">-50</option>
-             <option value="-55">-55</option>
-             <option value="-61">-61</option>
-             <option value="-68">-68</option>
-             <option value="+68">+68</option>
-         `;
-     }
-} else if (specialty === "Kumite" && classe === "Master") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
-
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-             <option value="-60">-60</option>
-             <option value="-67">-67</option>
-             <option value="-75">-75</option>
-             <option value="-84">-84</option>
-             <option value="+84">+84</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-50">-50</option>
-             <option value="-55">-55</option>
-             <option value="-61">-61</option>
-             <option value="-68">-68</option>
-             <option value="+68">+68</option>
-         `;
-     }
+// Funzione di utilità per il conteggio (usata in addAthlete)
+async function getSpecialtyCount(specialty) {
+    if (specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata') {
+        return getKidsCount();
+    }
     
- } else if (specialty === "Kumite" && classe === "Ragazzi") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
+    const { count, error } = await supabase
+        .from('atleti')
+        .select('id', { count: 'exact', head: true })
+        .eq('specialty', specialty);
 
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-             <option value="-32">-32</option>
-             <option value="-37">-37</option>
-             <option value="-42">-42</option>
-             <option value="-47">-47</option>
-             <option value="+47">+47</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-32">-32</option>
-             <option value="-37">-37</option>
-             <option value="-42">-42</option>
-             <option value="-47">-47</option>
-             <option value="+47">+47</option>
-         `;
-     }
- } else if (specialty === "Kumite" && classe === "Fanciulli") {
-     // Aggiungi le categorie di peso per i senior maschili e femminili
-     weightCategoryField.removeAttribute("disabled");
-     weightCategoryField.innerHTML = "";
-
-     if (gender === "Maschio") {
-         weightCategoryField.innerHTML += `
-                <option value="-25">-25</option>
-             <option value="-30">-30</option>
-             <option value="-35">-35</option>
-              <option value="-40">-40</option>
-            <option value="+40">+40</option>
-         `;
-     } else if (gender === "Femmina") {
-         weightCategoryField.innerHTML += `
-             <option value="-25">-25</option>
-             <option value="-30">-30</option>
-             <option value="-35">-35</option>
-            <option value="+35">+35</option>
-         `;
-     }
-} else {
-    weightCategoryField.setAttribute("disabled", "disabled");
-    weightCategoryField.innerHTML = "";
-}
-updateBeltOptions();
-}
-function updateSpecialtyOptionsBasedOnBirthdate() {
-const birthdateInput = document.getElementById("birthdate");
-const specialtySelect = document.getElementById("specialty");
-const birthYear = new Date(birthdateInput.value).getFullYear();
-
-// Pulisci le opzioni esistenti
-specialtySelect.innerHTML = "";
-
-// Aggiungi le opzioni in base all'anno di nascita
-if (birthYear >= 2018 && birthYear <= 2021) {
-specialtySelect.innerHTML += `
-<option value="GTP-Kata">GTP-Kata</option>
-<option value="GTP-Tecnica-libera">GTP-Tecnica_libera</option>
-<option value="ParaKarate">ParaKarate</option>`;
-} else if (birthYear >= 2008 && birthYear <= 2017) {
-specialtySelect.innerHTML += `
-<option value="Kata">Kata</option>
-<option value="Kumite">Kumite</option>
-<option value="ParaKarate">ParaKarate</option>`;
-    } else if (birthYear >= 1959 && birthYear <= 2007) {
-specialtySelect.innerHTML += `
-<option value="Kata">Kata</option>
-<option value="Kumite">Kumite</option>
-<option value="ParaKarate">ParaKarate</option>`;
-} else {
-specialtySelect.innerHTML += `
-   <option value="ERROR">ERROR</option>`;
-}
+    if (error) {
+        console.error(`Errore nel conteggio ${specialty}:`, error.message);
+        return 0;
+    }
+    return count;
 }
 
-     function updateBeltOptions() {
-         const classe = document.getElementById("classe").value;
-         const beltSelect = document.getElementById("belt");
 
-         // Pulisci e reimposta le opzioni per la categoria di cintura
-         beltSelect.innerHTML = "";
+//================================================================================
+// ⭐️ NUOVE FUNZIONI LOGICA EVENTI ⭐️
+//================================================================================
 
-         if (classe === "Fanciulli") {
-             // Se la classe è Fanciulli o Ragazzi, aggiungi le opzioni di cintura specifiche
-             beltSelect.innerHTML += `
-                  <option value="Bianca-Gialla">Bianca-Gialla</option>
-                 <option value="Arancio-Verde">Arancio-Verde</option>
-                 <option value="Blu-Marrone">Blu-Marrone</option>`;
-         }else if (classe === "Juniores" || classe === "Seniores") {
-             // Se la classe è Juniores, aggiungi le opzioni di cintura specifiche
-             beltSelect.innerHTML += `
-          <option value="Gialla-Arancione">Gialla-Arancione</option>
-                 <option value="Verde-Blu">Verde-Blu</option>
-                 <option value="Marrone-Nera">Marrone-Nera</option>`;
-         }else if (classe === "Esordienti" || classe === "Cadetti" || classe === "Ragazzi") {
-             // Se la classe è Juniores, aggiungi le opzioni di cintura specifiche
-             beltSelect.innerHTML += `
-                <option value="Gialla-Arancione">Gialla-Arancione</option>
-                 <option value="Verde-Blu">Verde-Blu</option>
-                 <option value="Marrone-Nera">Marrone-Nera</option>
-             `;
-         }else if (classe === "ERROR") {
-             beltSelect.innerHTML += `
-            <option value="ERROR">ERROR</option >
-        `;
-   }else if (classe === "Bambini_U8") {
-             beltSelect.innerHTML += `
-                 <option value="Bianca-Gialla">Bianca-Gialla</option>
-                 <option value="Arancio-Verde">Arancio-Verde</option>
-             `;
-              }else if (classe === "Bambini_U6") {
-             beltSelect.innerHTML += `
-                 <option value="Bianca-Gialla">Bianca-Gialla</option>
-                 <option value="Arancio-Verde">Arancio-Verde</option>
-             `;
-                  }else if (classe === "Master") {
-             beltSelect.innerHTML += `
-                 <option value="Verde-Blu">Verde-Blu</option>
-                 <option value="Marrone-Nera">Marrone-Nera</option>
-             `;
-     }else {
-             // Altrimenti, aggiungi le opzioni di cintura standard
-             beltSelect.innerHTML += `
-            <option value="Error">  </option >
-             `;
-         }
-     }
-     document.getElementById("birthdate").addEventListener("change", function() {
-         const birthdate = new Date(this.value);
-         const birthYear = birthdate.getFullYear();
-         const classeSelect = document.getElementById("classe");
+/**
+ * Funzione ADMIN: Mostra la sezione di creazione Eventi solo se l'utente è Admin.
+ * Dipende da isCurrentUserAdmin() e getAdminSocietyId() in script.js.
+ */
+async function showAdminSection() {
+    const adminSection = document.getElementById('adminEventCreation');
+    if (adminSection) {
+        if (await isCurrentUserAdmin()) {
+            adminSection.style.display = 'block';
+            await getAdminSocietyId(); // Pre-carica l'ID Società Admin
+            const adminSocietyIdDisplay = document.getElementById('adminSocietyIdDisplay');
+            if (adminSocietyIdDisplay && ADMIN_SOCIETY_ID) {
+                adminSocietyIdDisplay.textContent = ADMIN_SOCIETY_ID;
+            }
+        } else {
+            adminSection.style.display = 'none';
+        }
+    }
+}
 
-          if (birthYear >= 2008 && birthYear <= 2009) {
-             classe = "Juniores";
-             classeSelect.innerHTML = `
-                 <option value="Juniores">Juniores</option>
-             `;
-         } else if (birthYear >= 2010 && birthYear <= 2011) {
-             classe = "Cadetti";
-             classeSelect.innerHTML = `<option value="Cadetti">Cadetti</option>`;
-         } else if (birthYear >= 2012 && birthYear <= 2013) {
-             classe = "Esordienti";
-             classeSelect.innerHTML = `<option value="Esordienti">Esordienti</option>`;
-         } else if (birthYear >= 2014 && birthYear <= 2015) {
-             classe = "Ragazzi";
-             classeSelect.innerHTML = `<option value="Ragazzi">Ragazzi</option>`;
-         } else if (birthYear >= 2016 && birthYear <= 2017) {
-             classe = "Fanciulli";
-             classeSelect.innerHTML = `<option value="Fanciulli">Fanciulli</option>`;
-         } else if (birthYear >= 2018 && birthYear <= 2019) {
-             classe = "Bambini U8";
-             classeSelect.innerHTML = `<option value="Bambini_U8">Bambini_U8</option>`;
-             } else if (birthYear >= 2020 && birthYear <= 2021) {
-                  classe = "Bambini_U6";
-                  classeSelect.innerHTML = `<option value="Bambini_U6">Bambini_U6</option>`;
-             } else if (birthYear >= 1990 && birthYear <= 2007) {
-                   classe = "Seniores";
-                   classeSelect.innerHTML = `<option value="Seniores">Seniores</option>`;
-         } else if (birthYear >= 2022) {
-             classe = "ERROR";
-             classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
-         } else if (birthYear <=1959) {
-             classe = "ERROR";
-             classeSelect.innerHTML = `<option value="ERROR">ERROR</option>`;
-         } else {
-             classe = "Master";
-             classeSelect.innerHTML = `<option value="Master">Master</option>`;
-         }
+/**
+ * Funzione ADMIN: Creazione di un nuovo Evento.
+ * Utilizza l'ID della Società Admin pre-caricato.
+ */
+async function createEvent() {
+    if (!await isCurrentUserAdmin()) {
+        alert('Accesso negato. Solo l\'amministratore può creare eventi.');
+        return;
+    }
+    
+    const adminSocietyId = await getAdminSocietyId();
+    if (!adminSocietyId) {
+        alert('Impossibile determinare la Società Admin. Controlla la configurazione ADMIN_USER_ID.');
+        return;
+    }
 
-         toggleWeightCategory();
-     });
+    const nome = document.getElementById("eventName").value;
+    const descrizione = document.getElementById("eventDescription").value;
+    const data_evento = document.getElementById("eventDate").value;
+    const luogo = document.getElementById("eventLocation").value;
+    const quota = parseFloat(document.getElementById("eventFee").value) || 0;
 
-     document.querySelectorAll('input[name="gender"]').forEach(function(radio) {
-         radio.addEventListener("change", toggleWeightCategory);
-     })
+    if (!nome || !data_evento || !luogo) {
+        alert("Per favore, compila tutti i campi obbligatori dell'evento.");
+        return;
+    }
+
+    const { error } = await supabase
+        .from('eventi')
+        .insert([{
+            nome: nome,
+            descrizione: descrizione,
+            data_evento: data_evento,
+            luogo: luogo,
+            quota_iscrizione: quota,
+            societa_organizzatrice_id: adminSocietyId // Usa l'ID della Società Admin
+        }]);
+
+    if (error) {
+        console.error('Errore creazione evento:', error.message);
+        alert(`Errore durante la creazione dell'evento: ${error.message}`);
+    } else {
+        alert('Evento creato con successo!');
+        document.getElementById("eventForm").reset();
+        await populateEventSelector('eventSelector'); // Aggiorna la lista eventi
+    }
+}
+
+/**
+ * Recupera tutti gli Eventi Disponibili (da oggi in poi).
+ */
+async function fetchAvailableEvents() {
+    const { data: events, error } = await supabase
+        .from('eventi')
+        .select('id, nome, data_evento')
+        .gte('data_evento', new Date().toISOString().split('T')[0]) 
+        .order('data_evento', { ascending: true });
+
+    if (error) {
+        console.error('Errore nel recupero degli eventi:', error.message);
+        return [];
+    }
+    return events;
+}
+
+/**
+ * Popola il selettore degli eventi nell'interfaccia utente della società.
+ */
+async function populateEventSelector(selectorId) {
+    const selector = document.getElementById(selectorId);
+    if (!selector) return;
+
+    const events = await fetchAvailableEvents();
+    selector.innerHTML = '<option value="">Seleziona un Evento</option>'; 
+
+    events.forEach(event => {
+        const option = document.createElement('option');
+        option.value = event.id;
+        option.textContent = `${event.nome} (${new Date(event.data_evento).toLocaleDateString()})`;
+        selector.appendChild(option);
+    });
+}
+
+/**
+ * Funzione Società: Iscrive un Atleta a un Evento tramite la tabella iscrizioni_eventi.
+ */
+async function subscribeAthleteToEvent(athleteId, eventId) {
+    // 1. Verifica se l'atleta è già iscritto a questo evento 
+    const { count: existingSubscription, error: checkError } = await supabase
+        .from('iscrizioni_eventi')
+        .select('atleta_id', { count: 'exact', head: true })
+        .eq('atleta_id', athleteId)
+        .eq('evento_id', eventId);
+    
+    if (checkError) {
+        console.error("Errore verifica iscrizione:", checkError.message);
+        return;
+    }
+    if (existingSubscription > 0) {
+        alert("Questo atleta è già iscritto a questo evento!");
+        return;
+    }
+
+    // 2. Esegue l'iscrizione inserendo una riga nella tabella pivot
+    const { error } = await supabase
+        .from('iscrizioni_eventi')
+        .insert([{
+            atleta_id: athleteId,
+            evento_id: eventId,
+            stato_iscrizione: 'Iscritto' 
+        }]);
+
+    if (error) {
+        console.error('Errore iscrizione atleta:', error.message);
+        alert(`Errore durante l'iscrizione: ${error.message}`);
+    } else {
+        alert('Atleta iscritto all\'evento con successo!');
+    }
+}
