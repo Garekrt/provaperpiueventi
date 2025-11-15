@@ -7,13 +7,13 @@
 
 /**
  * Funzione per ottenere il limite massimo di atleti per specialità e evento.
- * Se eventId è null, usa i limiti predefiniti (come fallback o per l'Admin).
  */
 async function getMaxAthletesForSpecialty(specialty, eventId = null) {
-    // 1. Se l'evento è noto, cerca il limite nella tabella `limiti_evento`.
+    const isKidsSpecialty = specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata';
+    const key = isKidsSpecialty ? 'KIDS' : specialty;
+
+    // 1. Cerca il limite specifico per l'evento.
     if (eventId) {
-        const key = (specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata') ? 'KIDS' : specialty;
-        
         const { data, error } = await supabase
             .from('limiti_evento')
             .select('limite_max')
@@ -24,16 +24,13 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
         if (data && data.limite_max !== undefined) {
             return data.limite_max;
         }
-        // Se non trova il limite specifico, cade al limite predefinito, ma lancia un warning
-        console.warn(`Limite non trovato per ${key} nell'evento ${eventId}. Usando limite predefinito.`);
     } 
 
-    // 2. Limiti Predefiniti 
-    if (specialty === "Kumite") return 400;
-    if (specialty === "Kata") return 250;
-    if (specialty === "ParaKarate") return 50;
-    // Limite KIDS unificato
-    if (specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata') return 400;
+    // 2. Limiti Predefiniti (usati se limite_evento non è impostato)
+    if (key === "Kumite") return 400;
+    if (key === "Kata") return 250;
+    if (key === "ParaKarate") return 50;
+    if (key === 'KIDS') return 400; // Limite KIDS unificato
     
     return Infinity;
 }
@@ -46,9 +43,8 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
     let query = supabase
         .from('iscrizioni_eventi')
-        .select(`
-            atleti(specialty)
-        `, { count: 'exact', head: true })
+        // Seleziona atleti per il join, count: 'exact' è sul risultato della query
+        .select(`atleti(specialty)`, { count: 'exact', head: true }) 
         .eq('evento_id', eventId);
     
     // Filtriamo la specialità corretta nella tabella atleti tramite la join
@@ -71,20 +67,26 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
 
 // Funzione per aggiornare i contatori di tutte le specialità
-// script2.js (riga ~75)
-
 async function updateAllCounters(eventId = null) {
-    // ⭐ USA LE CHIAVI DI CONTEGGIO: Kumite, Kata, ParaKarate, KIDS
+    // ⭐ USA LE CHIAVI DI CONTEGGIO MOSTRATE NELLA TABELLA INDEX.HTML
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"]; 
     
-    // ... (Logica di visualizzazione/nascondimento) ...
+    // Nascondi lo status container se non c'è evento selezionato
+    const statsContainer = document.querySelector('.stats-container');
+    if (!eventId) {
+        if (statsContainer) statsContainer.style.display = 'none';
+        // Nascondi anche l'area form se nessun evento è attivo
+        if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'none';
+        return;
+    }
+    if (statsContainer) statsContainer.style.display = 'block';
+    if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'block';
 
-    for (const specialty of specialties) { 
-        
+
+    for (const specialty of specialties) {
         const countKey = specialty; // 'Kumite', 'Kata', 'ParaKarate', 'KIDS'
 
-        // ⭐ QUANDO LA CHIAVE È 'KIDS', CHIAMIAMO LA FUNZIONE CON UNA DELLE SOTTOCATEGORIE GTP
-        // getSpecialtyCount('GTP-Tecnica-libera', eventId) ritornerà il conteggio totale di entrambi i GTP.
+        // Quando la chiave è 'KIDS', usiamo una delle specialità GTP per avviare il conteggio unificato
         const specialtyToCount = (specialty === 'KIDS') ? 'GTP-Tecnica-libera' : specialty;
         
         // Calcola il limite e il conteggio
@@ -92,7 +94,6 @@ async function updateAllCounters(eventId = null) {
         const count = await getSpecialtyCount(specialtyToCount, eventId);
         
         const displayElement = document.getElementById(`${countKey}AthleteCountDisplay`);
-        // ... (resto della funzione) ...
         if (displayElement) {
             displayElement.textContent = `${count} / ${maxLimit}`;
             if (count >= maxLimit) {
@@ -102,9 +103,6 @@ async function updateAllCounters(eventId = null) {
             }
         }
     }
-    
-    await showAdminLimitsSection(eventId);
-}
     
     // Carica la sezione Admin Limiti 
     await showAdminLimitsSection(eventId);
@@ -116,6 +114,7 @@ async function updateAllCounters(eventId = null) {
 //================================================================================
 
 function calculateClassAndWeight(birthDate, gender) {
+    // ... (La logica di calcolo classe e peso rimane invariata) ...
     const today = new Date();
     const birth = new Date(birthDate);
     const birthYear = birth.getFullYear();
@@ -180,31 +179,6 @@ function calculateClassAndWeight(birthDate, gender) {
         weightSelect.disabled = true;
     }
 }
-document.addEventListener('DOMContentLoaded', () => {
-    const birthdateInput = document.getElementById('birthdate');
-    const genderSelect = document.getElementById('gender');
-    
-    if (birthdateInput && genderSelect) {
-        const recalculate = () => {
-            const birthDate = birthdateInput.value;
-            const gender = genderSelect.value;
-            if (birthDate && gender) {
-                calculateClassAndWeight(birthDate, gender);
-            }
-        };
-        
-        birthdateInput.addEventListener('change', recalculate);
-        genderSelect.addEventListener('change', recalculate);
-    }
-
-    const athleteForm = document.getElementById('athleteForm');
-    if (athleteForm) {
-        athleteForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await addAthlete();
-        });
-    }
-});
 
 
 // Funzione per l'aggiunta di un nuovo atleta
@@ -295,71 +269,8 @@ async function addAthlete() {
     }
 
     // Aggiorna l'interfaccia
-    fetchAthletes(eventId); // Ricarica la lista degli iscritti all'evento
+    fetchAthletes(eventId); // Ricarica la lista degli iscritti all'evento (fetchAthletes è in script.js)
     document.getElementById('athleteForm').reset();
-}
-
-// Funzione per rimuovere un atleta
-async function removeAthlete(athleteId, rowElement) {
-    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
-        return;
-    }
-
-    const { error } = await supabase
-        .from('atleti')
-        .delete()
-        .eq('id', athleteId);
-
-    if (error) {
-        console.error('Errore durante la rimozione:', error.message);
-        alert('Errore durante la rimozione dell\'atleta.');
-    } else {
-        rowElement.remove(); 
-        
-        // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventId = urlParams.get('event_id');
-        fetchAthletes(eventId); 
-    }
-}
-
-
-// Funzione per popolare la tabella atleti
-function addAthleteToTable(athlete, eventId = null) { 
-    const athleteList = document.getElementById('athleteList');
-    const row = athleteList.insertRow();
-    
-    row.insertCell().textContent = athlete.first_name;
-    row.insertCell().textContent = athlete.last_name;
-    row.insertCell().textContent = athlete.gender;
-    row.insertCell().textContent = athlete.birthdate;
-    row.insertCell().textContent = athlete.belt;
-    row.insertCell().textContent = athlete.classe;
-    row.insertCell().textContent = athlete.specialty;
-    row.insertCell().textContent = athlete.weight_category || 'N/D';
-    row.insertCell().textContent = athlete.society_id;
-
-    const statusCell = row.insertCell();
-    const isFilteredByEvent = athlete.iscritti_evento_nome; // Verifica se i dati di iscrizione sono presenti nel record
-
-    if (isFilteredByEvent) {
-        statusCell.textContent = `${athlete.iscritti_evento_nome} (${athlete.iscritti_evento_stato})`;
-        statusCell.style.backgroundColor = '#d4edda';
-    } else if (eventId) {
-        statusCell.textContent = 'Non iscritto all\'evento selezionato';
-        statusCell.style.backgroundColor = '#f8d7da';
-    } else {
-        statusCell.textContent = 'Nessun filtro evento attivo';
-    }
-    
-    const actionsCell = row.insertCell();
-    
-    const removeButton = document.createElement('button');
-    removeButton.textContent = 'Rimuovi';
-    removeButton.classList.add('btn', 'btn-danger', 'btn-sm', 'mb-1');
-    removeButton.addEventListener('click', () => removeAthlete(athlete.id, row));
-    actionsCell.appendChild(removeButton);
-
 }
 
 
@@ -416,7 +327,9 @@ async function loadEventLimits(eventId) {
 
     // Usa getMaxAthletesForSpecialty per ottenere i default se non sono impostati
     for (const spec of specialties) {
-        const defaultLimit = await getMaxAthletesForSpecialty(spec); 
+        // Passiamo la specialità corretta per ottenere il limite predefinito (es. Kumite)
+        const specialtyForDefault = (spec === 'KIDS') ? 'GTP-Tecnica-libera' : spec; 
+        const defaultLimit = await getMaxAthletesForSpecialty(specialtyForDefault); 
         const currentLimit = existingLimits[spec] !== undefined ? existingLimits[spec] : defaultLimit;
         
         limitContainer.innerHTML += `
@@ -539,3 +452,30 @@ async function populateEventSelector(selectorId) {
          selector.value = eventId;
     }
 }
+
+// Listener generale per la pagina
+document.addEventListener('DOMContentLoaded', async () => { // ⭐ CORREZIONE: reso async 
+    const birthdateInput = document.getElementById('birthdate');
+    const genderSelect = document.getElementById('gender');
+    
+    if (birthdateInput && genderSelect) {
+        const recalculate = () => {
+            const birthDate = birthdateInput.value;
+            const gender = genderSelect.value;
+            if (birthDate && gender) {
+                calculateClassAndWeight(birthDate, gender);
+            }
+        };
+        
+        birthdateInput.addEventListener('change', recalculate);
+        genderSelect.addEventListener('change', recalculate);
+    }
+
+    const athleteForm = document.getElementById('athleteForm');
+    if (athleteForm) {
+        athleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await addAthlete();
+        });
+    }
+});
