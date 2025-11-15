@@ -34,7 +34,6 @@
             margin-bottom: 30px;
         }
 
-        /* ... (altri stili non modificati) ... */
         label {
             display: block;
             margin-top: 10px;
@@ -61,6 +60,10 @@
 
         .form-row>div {
             flex: 1;
+        }
+        /* Fix per i form-group interni alla sezione limiti */
+        #adminLimitsConfig .form-group {
+             flex: 1 1 23%; 
         }
 
         button.btn {
@@ -106,7 +109,6 @@
             display: block;
             margin-top: 5px !important;
         }
-        /* ... (fine stili non modificati) ... */
     </style>
 </head>
 
@@ -121,7 +123,7 @@
         </div>
         
         <div style="padding: 10px; background-color: #e6f7ff; border: 1px solid #91d5ff; border-radius: 5px; margin-bottom: 20px;">
-            <p style="margin: 0;">Evento Attivo: <strong><span id="currentEventDisplay">Nessun Evento Selezionato</span></strong></p>
+            <p style="margin: 0;">ID Evento Attivo: <strong><span id="currentEventDisplay">Nessun Evento Selezionato</span></strong></p>
             <small><a href="event_selector.html">Cambia Evento / Gestione Generica</a></small>
         </div>
 
@@ -166,7 +168,7 @@
         </div>
         <form id="athleteForm">
             <h3>Dati Atleta e Iscrizione all'Evento Attivo</h3>
-            <div class="form-row">
+             <div class="form-row">
                 <div>
                     <label for="firstName">Nome:</label>
                     <input type="text" id="firstName" required>
@@ -236,7 +238,7 @@
         </form>
 
         
-        <h2>Lista Atleti</h2>
+        <h2>Lista Atleti Iscritti</h2>
         <table id="athleteTable">
             <thead>
                 <tr>
