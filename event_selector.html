@@ -71,6 +71,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
+    <script src="script2.js"></script>
+
     <script>
         // Funzione di utility per reindirizzare alla pagina index.html con l'ID dell'evento
         function goToEventPage() {
@@ -89,12 +91,11 @@
         }
 
         // Al caricamento della pagina, popola il selettore eventi (funzione in script2.js)
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO 'async' QUI
              // Carica il nome della società e popola il selettore eventi.
-             // Non è necessario fetchAthletes qui, solo i dati base.
-             fetchSocietyNameOnLoad(); 
+             await fetchSocietyNameOnLoad(); 
              // Carica la funzione popola eventi da script2.js
-             populateEventSelector('eventSelector'); 
+             await populateEventSelector('eventSelector'); 
         });
         
         // Assicurati che l'utente sia loggato
