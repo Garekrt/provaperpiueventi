@@ -3,6 +3,10 @@ const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
+const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
+let ADMIN_SOCIETY_ID = null;
+
 // Funzioni di Autenticazione
 async function signUp(email, password, nomeSocieta, Phone) {
     try {
@@ -45,7 +49,49 @@ async function signOut() {
 }
 
 //================================================================================
-// FUNZIONE PRINCIPALE: FETCH ATLETI (AGGIORNATA PER IL FILTRO E PARAMETRO EVENTO)
+// FUNZIONE PER POPOLARE LA TABELLA ATLETI (Spostata qui)
+//================================================================================
+function addAthleteToTable(athlete, eventId = null) { 
+    const athleteList = document.getElementById('athleteList');
+    if (!athleteList) return; // Controllo di sicurezza
+
+    const row = athleteList.insertRow();
+    
+    row.insertCell().textContent = athlete.first_name;
+    row.insertCell().textContent = athlete.last_name;
+    row.insertCell().textContent = athlete.gender;
+    row.insertCell().textContent = athlete.birthdate;
+    row.insertCell().textContent = athlete.belt;
+    row.insertCell().textContent = athlete.classe;
+    row.insertCell().textContent = athlete.specialty;
+    row.insertCell().textContent = athlete.weight_category || 'N/D';
+    row.insertCell().textContent = athlete.society_id;
+
+    const statusCell = row.insertCell();
+    const isFilteredByEvent = athlete.iscritti_evento_nome; 
+
+    if (isFilteredByEvent) {
+        statusCell.textContent = `${athlete.iscritti_evento_nome} (${athlete.iscritti_evento_stato})`;
+        statusCell.style.backgroundColor = '#d4edda';
+    } else if (eventId) {
+        statusCell.textContent = 'Non iscritto all\'evento selezionato';
+        statusCell.style.backgroundColor = '#f8d7da';
+    } else {
+        statusCell.textContent = 'Nessun filtro evento attivo';
+    }
+    
+    const actionsCell = row.insertCell();
+    
+    const removeButton = document.createElement('button');
+    removeButton.textContent = 'Rimuovi';
+    removeButton.classList.add('btn', 'btn-danger', 'btn-sm', 'mb-1');
+    removeButton.addEventListener('click', () => removeAthlete(athlete.id, row));
+    actionsCell.appendChild(removeButton);
+}
+
+
+//================================================================================
+// FUNZIONE PRINCIPALE: FETCH ATLETI 
 //================================================================================
 /**
  * Recupera gli atleti della società loggata.
@@ -115,19 +161,24 @@ async function fetchAthletes(filterEventId = null) {
         }
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
-        await updateAllCounters(filterEventId); // PASSA L'ID EVENTO 
+        // ATTENZIONE: Queste funzioni DEVONO essere caricate prima di fetchAthletes
+        await updateAllCounters(filterEventId); 
         await populateEventSelector('eventSelector'); 
         await showAdminSection(); 
 
     } catch (error) {
+        // L'errore addAthleteToTable is not defined non dovrebbe più verificarsi qui
         console.error("Errore nel recupero degli atleti:", error.message);
-        document.getElementById('societyNameDisplay').textContent = "Errore di caricamento dati.";
+        
+        // Aggiungi un controllo per l'elemento che stai tentando di aggiornare
+        const societyNameDisplay = document.getElementById('societyNameDisplay');
+        if (societyNameDisplay) {
+            societyNameDisplay.textContent = "Errore di caricamento dati.";
+        }
     }
 }
 
 // Fetch society name on page load if user is logged in
-// MODIFICA IN script.js (funzione fetchSocietyNameOnLoad)
-
 async function fetchSocietyNameOnLoad() {
     const user = await supabase.auth.getUser();
     if (user.data?.user?.id) {
@@ -140,16 +191,17 @@ async function fetchSocietyNameOnLoad() {
         if (societyError) {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
-            // ⭐ MODIFICA: Controlla PRIMA se l'elemento esiste
+            // ⭐ Correzione: Controlla se l'elemento esiste prima di tentare di impostare textContent
             const societyNameDisplay = document.getElementById('societyNameDisplay');
             if (societyNameDisplay) { 
                 societyNameDisplay.textContent = societyData.nome;
             }
             
-            // ... (resto della logica, che riguarda index.html)
+            // CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI 
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event_id');
             
+            // Aggiorna l'interfaccia se un evento è stato selezionato
             const currentEventDisplay = document.getElementById('currentEventDisplay');
             if (currentEventDisplay) {
                 if (eventId) {
@@ -159,7 +211,8 @@ async function fetchSocietyNameOnLoad() {
                 }
             }
             
-            if (document.getElementById('athleteList')) {
+            // Avvia il caricamento degli atleti (con o senza filtro) solo se siamo su index.html
+            if (document.getElementById('athleteList')) { 
                 fetchAthletes(eventId);
             }
         }
@@ -168,13 +221,8 @@ async function fetchSocietyNameOnLoad() {
 
 
 //================================================================================
-// FUNZIONI UTILITY PER GESTIONE ADMIN E EVENTI
+// FUNZIONI UTILITY PER GESTIONE ADMIN
 //================================================================================
-
-// ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
-const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
-
-let ADMIN_SOCIETY_ID = null;
 
 async function isCurrentUserAdmin() {
     const user = await supabase.auth.getUser();
@@ -200,7 +248,7 @@ async function getAdminSocietyId() {
 }
 
 // Inizializza l'ascoltatore per il loginForm e l'esecuzione al caricamento
-document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO 'async'
+document.addEventListener('DOMContentLoaded', async () => { 
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -223,6 +271,29 @@ document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO '
         });
     }
     
-    // Esegue il fetch del nome società (che a sua volta chiama fetchAthletes solo su index.html)
     await fetchSocietyNameOnLoad(); 
 });
+
+// Funzione per la rimozione di un atleta (necessaria qui perché chiamata in addAthleteToTable)
+async function removeAthlete(athleteId, rowElement) {
+    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
+        return;
+    }
+
+    const { error } = await supabase
+        .from('atleti')
+        .delete()
+        .eq('id', athleteId);
+
+    if (error) {
+        console.error('Errore durante la rimozione:', error.message);
+        alert('Errore durante la rimozione dell\'atleta.');
+    } else {
+        rowElement.remove(); 
+        
+        // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event_id');
+        fetchAthletes(eventId); 
+    }
+}
