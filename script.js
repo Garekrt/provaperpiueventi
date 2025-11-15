@@ -6,8 +6,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
 let ADMIN_SOCIETY_ID = null;
+//================================================================================
+// FUNZIONI DI AUTENTICAZIONE
+//================================================================================
 
-// Funzioni di Autenticazione
 async function signUp(email, password, nomeSocieta, Phone) {
     try {
         const { data, error } = await supabase.auth.signUp({ email, password });
@@ -29,7 +31,6 @@ async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
-        // REINDIRIZZA ALLA PAGINA DI SELEZIONE EVENTO 
         window.location.href = '/event_selector.html'; 
     } catch (error) {
         console.error('Errore:', error.message);
@@ -49,11 +50,38 @@ async function signOut() {
 }
 
 //================================================================================
-// FUNZIONE PER POPOLARE LA TABELLA ATLETI (Spostata qui)
+// FUNZIONI UTILITY PER GESTIONE ADMIN
+//================================================================================
+
+async function isCurrentUserAdmin() {
+    const user = await supabase.auth.getUser();
+    if (!user.data?.user?.id) return false;
+    return user.data.user.id === ADMIN_USER_ID;
+}
+
+async function getAdminSocietyId() {
+    if (ADMIN_SOCIETY_ID) return ADMIN_SOCIETY_ID;
+    
+    const { data: societyData, error } = await supabase
+        .from('societa')
+        .select('id')
+        .eq('user_id', ADMIN_USER_ID)
+        .single();
+
+    if (error || !societyData) {
+        console.error('Errore nel recupero dell\'ID della società admin o società admin non trovata:', error?.message);
+        return null;
+    }
+    ADMIN_SOCIETY_ID = societyData.id;
+    return ADMIN_SOCIETY_ID;
+}
+
+//================================================================================
+// FUNZIONE PER POPOLARE LA TABELLA ATLETI
 //================================================================================
 function addAthleteToTable(athlete, eventId = null) { 
     const athleteList = document.getElementById('athleteList');
-    if (!athleteList) return; // Controllo di sicurezza
+    if (!athleteList) return; 
 
     const row = athleteList.insertRow();
     
@@ -89,22 +117,43 @@ function addAthleteToTable(athlete, eventId = null) {
     actionsCell.appendChild(removeButton);
 }
 
+// Funzione per la rimozione di un atleta 
+async function removeAthlete(athleteId, rowElement) {
+    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
+        return;
+    }
+
+    const { error } = await supabase
+        .from('atleti')
+        .delete()
+        .eq('id', athleteId);
+
+    if (error) {
+        console.error('Errore durante la rimozione:', error.message);
+        alert('Errore durante la rimozione dell\'atleta.');
+    } else {
+        rowElement.remove(); 
+        
+        // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event_id');
+        fetchAthletes(eventId); 
+    }
+}
+
 
 //================================================================================
-// FUNZIONE PRINCIPALE: FETCH ATLETI 
+// FUNZIONE PRINCIPALE: FETCH ATLETI (Chiama le funzioni di script2.js)
 //================================================================================
+
 /**
- * Recupera gli atleti della società loggata.
- * Può filtrare per un Evento specifico se viene fornito filterEventId.
+ * Recupera gli atleti della società loggata e aggiorna l'interfaccia.
  * @param {string|null} filterEventId - ID dell'evento da usare come filtro.
  */
 async function fetchAthletes(filterEventId = null) {
     try {
         const user = await supabase.auth.getUser();
-        if (!user.data?.user?.id) {
-            console.error("Utente non loggato o ID non disponibile.");
-            return;
-        }
+        if (!user.data?.user?.id) return;
 
         const { data: society, error: societyError } = await supabase
             .from('societa')
@@ -120,7 +169,7 @@ async function fetchAthletes(filterEventId = null) {
 
         // LOGICA DI FILTRO 
         if (filterEventId) {
-             // Recupera solo gli atleti iscritti all'evento X, con i dettagli dell'evento
+            // ... (logica per recuperare solo gli iscritti all'evento X)
             const { data: subscriptionData, error: subError } = await supabase
                 .from('iscrizioni_eventi')
                 .select(`
@@ -131,9 +180,8 @@ async function fetchAthletes(filterEventId = null) {
 
             if (subError) throw subError;
             
-            // Mappa i dati per includere i dettagli dell'iscrizione nell'oggetto atleta
             athletesData = subscriptionData
-                .filter(sub => sub.atleti.society_id === societyId)
+                .filter(sub => sub.atleti && sub.atleti.society_id === societyId) // Aggiunto controllo atleti
                 .map(sub => ({ 
                     ...sub.atleti, 
                     iscritti_evento_nome: sub.eventi.nome,
@@ -156,27 +204,24 @@ async function fetchAthletes(filterEventId = null) {
         const athleteList = document.getElementById('athleteList');
         if (athleteList) {
             athleteList.innerHTML = '';
-            // Passa l'ID evento per mostrare correttamente lo stato di iscrizione
             athletesData.forEach(athlete => addAthleteToTable(athlete, filterEventId)); 
         }
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
-        // ATTENZIONE: Queste funzioni DEVONO essere caricate prima di fetchAthletes
         await updateAllCounters(filterEventId); 
-        await populateEventSelector('eventSelector'); 
+        await populateEventSelector('eventSelector'); // ⭐ Funzione in script2.js
         await showAdminSection(); 
 
     } catch (error) {
-        // L'errore addAthleteToTable is not defined non dovrebbe più verificarsi qui
         console.error("Errore nel recupero degli atleti:", error.message);
         
-        // Aggiungi un controllo per l'elemento che stai tentando di aggiornare
         const societyNameDisplay = document.getElementById('societyNameDisplay');
         if (societyNameDisplay) {
             societyNameDisplay.textContent = "Errore di caricamento dati.";
         }
     }
 }
+
 
 // Fetch society name on page load if user is logged in
 async function fetchSocietyNameOnLoad() {
@@ -191,27 +236,19 @@ async function fetchSocietyNameOnLoad() {
         if (societyError) {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
-            // ⭐ Correzione: Controlla se l'elemento esiste prima di tentare di impostare textContent
             const societyNameDisplay = document.getElementById('societyNameDisplay');
             if (societyNameDisplay) { 
                 societyNameDisplay.textContent = societyData.nome;
             }
             
-            // CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI 
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event_id');
             
-            // Aggiorna l'interfaccia se un evento è stato selezionato
             const currentEventDisplay = document.getElementById('currentEventDisplay');
             if (currentEventDisplay) {
-                if (eventId) {
-                    currentEventDisplay.textContent = eventId;
-                } else {
-                    currentEventDisplay.textContent = 'Nessun Evento Selezionato';
-                }
+                currentEventDisplay.textContent = eventId ? eventId : 'Nessun Evento Selezionato';
             }
             
-            // Avvia il caricamento degli atleti (con o senza filtro) solo se siamo su index.html
             if (document.getElementById('athleteList')) { 
                 fetchAthletes(eventId);
             }
@@ -219,33 +256,6 @@ async function fetchSocietyNameOnLoad() {
     }
 }
 
-
-//================================================================================
-// FUNZIONI UTILITY PER GESTIONE ADMIN
-//================================================================================
-
-async function isCurrentUserAdmin() {
-    const user = await supabase.auth.getUser();
-    if (!user.data?.user?.id) return false;
-    return user.data.user.id === ADMIN_USER_ID;
-}
-
-async function getAdminSocietyId() {
-    if (ADMIN_SOCIETY_ID) return ADMIN_SOCIETY_ID;
-    
-    const { data: societyData, error } = await supabase
-        .from('societa')
-        .select('id')
-        .eq('user_id', ADMIN_USER_ID)
-        .single();
-
-    if (error || !societyData) {
-        console.error('Errore nel recupero dell\'ID della società admin o società admin non trovata:', error?.message);
-        return null;
-    }
-    ADMIN_SOCIETY_ID = societyData.id;
-    return ADMIN_SOCIETY_ID;
-}
 
 // Inizializza l'ascoltatore per il loginForm e l'esecuzione al caricamento
 document.addEventListener('DOMContentLoaded', async () => { 
@@ -273,27 +283,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await fetchSocietyNameOnLoad(); 
 });
-
-// Funzione per la rimozione di un atleta (necessaria qui perché chiamata in addAthleteToTable)
-async function removeAthlete(athleteId, rowElement) {
-    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
-        return;
-    }
-
-    const { error } = await supabase
-        .from('atleti')
-        .delete()
-        .eq('id', athleteId);
-
-    if (error) {
-        console.error('Errore durante la rimozione:', error.message);
-        alert('Errore durante la rimozione dell\'atleta.');
-    } else {
-        rowElement.remove(); 
-        
-        // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventId = urlParams.get('event_id');
-        fetchAthletes(eventId); 
-    }
-}
