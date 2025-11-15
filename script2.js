@@ -2,7 +2,7 @@
 // Vengono usati ADMIN_USER_ID, fetchAthletes, isCurrentUserAdmin, getAdminSocietyId da script.js
 
 //================================================================================
-// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO
+// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO (FIX APPLICATO QUI)
 //================================================================================
 
 /**
@@ -44,14 +44,18 @@ async function getSpecialtyCount(specialty, eventId = null) {
     
     let query = supabase
         .from('iscrizioni_eventi')
-        .select(`atleti(specialty)`, { count: 'exact', head: true }) 
+        // ⭐ FIX: Usiamo 'atleti!inner(specialty)' per forzare un INNER JOIN 
+        // che garantisce che il filtro sulla 'specialty' venga applicato prima del conteggio.
+        .select(`atleta_id, atleti!inner(specialty)`, { count: 'exact', head: true }) 
         .eq('evento_id', eventId);
     
+    // Filtriamo la specialità corretta nella tabella atleti tramite la join
     if (isKids) {
          const specialtyList = ["Percorso-Palloncino", "Percorso-Kata", "Palloncino"];
          query = query.in('atleti.specialty', specialtyList); 
             
     } else {
+        // Conteggio per la singola specialità (Kumite, Kata, ParaKarate)
         query = query.eq('atleti.specialty', specialty);
     }
     
@@ -107,13 +111,9 @@ async function updateAllCounters(eventId = null) {
 
 
 //================================================================================
-// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE (Unificata)
+// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE (Unificata - Nessuna Modifica)
 //================================================================================
 
-/**
- * Calcola e popola i campi CLASSE, SPECIALITÀ, PESO e CINTURA 
- * basandosi su Data di Nascita e Genere.
- */
 function calculateAthleteAttributes(birthDate, gender) {
     const today = new Date();
     const birth = new Date(birthDate);
@@ -152,7 +152,7 @@ function calculateAthleteAttributes(birthDate, gender) {
 
     // --- 2. Popolamento Specialità (basato sulla CLASSE) ---
     specialtySelect.innerHTML = "";
-    if (currentClasse.includes("Bambini")) { // U6 e U8
+    if (currentClasse.includes("Bambini")) { 
         specialtySelect.innerHTML += `
             <option value="Percorso-Kata">Percorso-Kata</option>
             <option value="Percorso-Palloncino">Percorso-Palloncino</option>
@@ -198,16 +198,12 @@ function calculateAthleteAttributes(birthDate, gender) {
     // --- 4. Popolamento Categoria di Peso ---
     updateWeightCategoryOptions(currentClasse, gender, specialtySelect.value);
 
-    // Aggiungi un listener alla specialità per aggiornare il peso se cambia
     specialtySelect.onchange = () => {
         updateWeightCategoryOptions(currentClasse, gender, specialtySelect.value);
     };
 }
 
 
-/**
- * Popola il selettore della categoria di peso (logica complessa Kumite/ParaKarate)
- */
 function updateWeightCategoryOptions(classe, gender, specialty) {
     const weightCategoryField = document.getElementById("weightCategory");
     weightCategoryField.innerHTML = "";
@@ -218,17 +214,17 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
         weightCategoryField.removeAttribute("disabled");
 
         if (classe === "Esordienti") {
-            if (isMale) { /* ... logica peso Esordienti Maschi ... */
+            if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-40">M -40 Kg</option><option value="-45">M -45 Kg</option>
                     <option value="-50">M -50 Kg</option><option value="-55">M -55 Kg</option>
                     <option value="+55">M +55 Kg</option>`;
-            } else { /* ... logica peso Esordienti Femmine ... */
+            } else { 
                 weightCategoryField.innerHTML += `
                     <option value="-42">F -42 Kg</option><option value="-47">F -47 Kg</option>
                     <option value="-52">F -52 Kg</option><option value="+52">F +52 Kg</option>`;
             }
-        } else if (classe === "Cadetti") { /* ... logica peso Cadetti ... */
+        } else if (classe === "Cadetti") { 
              if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-47">M -47 Kg</option><option value="-52">M -52 Kg</option>
@@ -241,7 +237,7 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
                     <option value="-54">F -54 Kg</option><option value="-61">F -61 Kg</option>
                     <option value="-68">F -68 Kg</option><option value="+68">F +68 Kg</option>`;
             }
-        } else if (classe === "Juniores") { /* ... logica peso Juniores ... */
+        } else if (classe === "Juniores") { 
              if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-50">M -50 Kg</option><option value="-55">M -55 Kg</option>
@@ -254,7 +250,7 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
                     <option value="-59">F -59 Kg</option><option value="-66">F -66 Kg</option>
                     <option value="-74">F -74 Kg</option><option value="+74">F +74 Kg</option>`;
             }
-        } else if (classe === "Seniores" || classe === "U21") { /* ... logica peso Seniores/U21 ... */
+        } else if (classe === "Seniores" || classe === "U21") { 
             if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-60">M -60 Kg</option><option value="-67">M -67 Kg</option>
@@ -266,7 +262,7 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
                     <option value="-61">F -61 Kg</option><option value="-68">F -68 Kg</option>
                     <option value="+68">F +68 Kg</option>`;
             }
-        } else if (classe === "Ragazzi") { /* ... logica peso Ragazzi ... */
+        } else if (classe === "Ragazzi") { 
             if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-32">M -32 Kg</option><option value="-37">M -37 Kg</option>
@@ -278,7 +274,7 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
                     <option value="-42">F -42 Kg</option><option value="-47">F -47 Kg</option>
                     <option value="+47">F +47 Kg</option>`;
             }
-        } else if (classe === "Fanciulli") { /* ... logica peso Fanciulli ... */
+        } else if (classe === "Fanciulli") { 
             if (isMale) {
                 weightCategoryField.innerHTML += `
                     <option value="-22">M -22 Kg</option><option value="-27">M -27 Kg</option>
@@ -293,7 +289,6 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
         }
     } else if (specialty === "ParaKarate") {
         weightCategoryField.removeAttribute("disabled");
-        // Categorie ParaKarate (stesse per entrambi i generi)
         weightCategoryField.innerHTML += `
             <option value="K20">K 20</option><option value="K21">K 21</option><option value="K22">K 22</option>
             <option value="K30">K 30</option><option value="K31">K 31</option><option value="K32">K 32</option>
@@ -306,7 +301,6 @@ function updateWeightCategoryOptions(classe, gender, specialty) {
 }
 
 
-// Funzione per l'aggiunta di un nuovo atleta
 async function addAthlete() {
     const firstName = document.getElementById('firstName').value;
     const lastName = document.getElementById('lastName').value;
@@ -397,10 +391,9 @@ async function addAthlete() {
 
 
 //================================================================================
-// 3. GESTIONE EVENTI E ADMIN
+// 3. GESTIONE EVENTI E ADMIN (Nessuna Modifica)
 //================================================================================
 
-// Funzione ADMIN: Mostra la sezione di creazione Eventi
 async function showAdminSection() {
     const adminSection = document.getElementById('adminEventCreation');
     if (adminSection) {
@@ -417,7 +410,6 @@ async function showAdminSection() {
     }
 }
 
-// Funzione ADMIN: Sezione per la gestione dei Limiti per Evento 
 async function showAdminLimitsSection(eventId) {
     const adminLimitsSection = document.getElementById('adminLimitsConfig');
     if (!adminLimitsSection) return;
@@ -431,7 +423,6 @@ async function showAdminLimitsSection(eventId) {
     }
 }
 
-// Funzione ADMIN: Carica i limiti esistenti per l'evento selezionato
 async function loadEventLimits(eventId) {
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"];
     const limitContainer = document.getElementById('limitInputs');
@@ -461,7 +452,6 @@ async function loadEventLimits(eventId) {
     }
 }
 
-// Funzione ADMIN: Salva i limiti aggiornati
 async function saveEventLimits() {
     const eventId = document.getElementById('limitsEventId').textContent;
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"];
@@ -490,7 +480,6 @@ async function saveEventLimits() {
     }
 }
 
-// Funzione ADMIN: Creazione di un nuovo Evento
 async function handleCreateEvent() { 
     if (!await isCurrentUserAdmin()) {
         alert('Accesso negato.');
@@ -535,7 +524,6 @@ async function handleCreateEvent() {
     }
 }
 
-// Funzione per il recupero degli eventi disponibili
 async function fetchAvailableEvents() {
     const { data: events, error } = await supabase
         .from('eventi')
@@ -550,7 +538,6 @@ async function fetchAvailableEvents() {
     return events;
 }
 
-// ⭐ Funzione per il popolamento del selettore Eventi
 async function populateEventSelector(selectorId) {
     const selector = document.getElementById(selectorId);
     if (!selector) return;
@@ -574,7 +561,7 @@ async function populateEventSelector(selectorId) {
 
 
 //================================================================================
-// 4. LISTENERS (Risolto errore ASYNC)
+// 4. LISTENERS (Nessuna Modifica)
 //================================================================================
 
 document.addEventListener('DOMContentLoaded', async () => { 
@@ -586,7 +573,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const birthDate = birthdateInput.value;
             const gender = genderSelect.value;
             if (birthDate && gender) {
-                // Chiama la funzione unificata
                 calculateAthleteAttributes(birthDate, gender); 
             }
         };
@@ -618,6 +604,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // Mostra la sezione Admin
     await showAdminSection(); 
 });
