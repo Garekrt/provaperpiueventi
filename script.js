@@ -53,7 +53,7 @@ async function signOut() {
 async function forgotPassword(email) {
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            // DEVE CORRISPONDERE ALLA PAGINA CHE HAI CREATO AL PUNTO 3
+            // IL LINK DEVE PUNTARE ALLA PAGINA update-password.html
             redirectTo: window.location.origin + '/update-password.html', 
         });
 
@@ -154,7 +154,10 @@ async function removeAthlete(athleteId, rowElement) {
         // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
         const urlParams = new URLSearchParams(window.location.search);
         const eventId = urlParams.get('event_id');
-        fetchAthletes(eventId); 
+        // Chiama la funzione di fetchAthletes che a sua volta chiama updateAllCounters (in script2.js)
+        if (typeof fetchAthletes === 'function') {
+            fetchAthletes(eventId); 
+        }
     }
 }
 
@@ -186,7 +189,6 @@ async function fetchAthletes(filterEventId = null) {
 
         // LOGICA DI FILTRO 
         if (filterEventId) {
-            // ... (logica per recuperare solo gli iscritti all'evento X)
             const { data: subscriptionData, error: subError } = await supabase
                 .from('iscrizioni_eventi')
                 .select(`
@@ -198,7 +200,7 @@ async function fetchAthletes(filterEventId = null) {
             if (subError) throw subError;
             
             athletesData = subscriptionData
-                .filter(sub => sub.atleti && sub.atleti.society_id === societyId) // Aggiunto controllo atleti
+                .filter(sub => sub.atleti && sub.atleti.society_id === societyId) 
                 .map(sub => ({ 
                     ...sub.atleti, 
                     iscritti_evento_nome: sub.eventi.nome,
@@ -225,9 +227,15 @@ async function fetchAthletes(filterEventId = null) {
         }
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
-        await updateAllCounters(filterEventId); 
-        await populateEventSelector('eventSelector'); 
-        await showAdminSection(); 
+        if (typeof updateAllCounters === 'function') {
+            await updateAllCounters(filterEventId); 
+        }
+        if (typeof populateEventSelector === 'function') {
+            await populateEventSelector('eventSelector'); 
+        }
+        if (typeof showAdminSection === 'function') {
+            await showAdminSection(); 
+        }
 
     } catch (error) {
         console.error("Errore nel recupero degli atleti:", error.message);
@@ -267,7 +275,10 @@ async function fetchSocietyNameOnLoad() {
             }
             
             if (document.getElementById('athleteList')) { 
-                fetchAthletes(eventId);
+                // Controlla se fetchAthletes è definita (viene da script.js) prima di chiamarla
+                if (typeof fetchAthletes === 'function') {
+                     fetchAthletes(eventId);
+                }
             }
         }
     }
@@ -290,14 +301,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (registrazioneForm) {
         registrazioneForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // ⭐ RISOLUZIONE ERRORE: Questi campi esistono solo qui
             const nomeSocieta = document.getElementById('nomeSocieta').value;
             const email = document.getElementById('email').value;
-            const emailConfirm = document.getElementById('emailConfirm').value; // ⭐ NUOVO
+            const emailConfirm = document.getElementById('emailConfirm').value; 
             const password = document.getElementById('password').value;
-            const passwordConfirm = document.getElementById('passwordConfirm').value; // ⭐ NUOVO
+            const passwordConfirm = document.getElementById('passwordConfirm').value; 
             const Phone = document.getElementById('Phone').value;
 
-            // ⭐ VALIDAZIONE AGGIUNTA
+            // VALIDAZIONE CONFERMA
             if (email !== emailConfirm) {
                 alert('Errore: L\'email e la conferma email non corrispondono.');
                 return;
@@ -311,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ⭐ NUOVO LISTENER PER RECUPERO PASSWORD
+    // ⭐ LISTENER PER RECUPERO PASSWORD
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     if (forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', (e) => {
