@@ -49,6 +49,23 @@ async function signOut() {
     }
 }
 
+// ⭐ NUOVA FUNZIONE RECUPERO PASSWORD
+async function forgotPassword(email) {
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            // DEVE CORRISPONDERE ALLA PAGINA CHE HAI CREATO AL PUNTO 3
+            redirectTo: window.location.origin + '/update-password.html', 
+        });
+
+        if (error) throw error;
+        
+        alert('Richiesta inviata! Controlla la tua casella email per il link di recupero della password.');
+        
+    } catch (error) {
+        console.error('Errore nel recupero password:', error.message);
+        alert('Errore nell\'invio della richiesta: ' + error.message);
+    }
+}
 //================================================================================
 // FUNZIONI UTILITY PER GESTIONE ADMIN
 //================================================================================
@@ -209,7 +226,7 @@ async function fetchAthletes(filterEventId = null) {
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
         await updateAllCounters(filterEventId); 
-        await populateEventSelector('eventSelector'); // ⭐ Funzione in script2.js
+        await populateEventSelector('eventSelector'); 
         await showAdminSection(); 
 
     } catch (error) {
@@ -275,9 +292,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const nomeSocieta = document.getElementById('nomeSocieta').value;
             const email = document.getElementById('email').value;
+            const emailConfirm = document.getElementById('emailConfirm').value; // ⭐ NUOVO
             const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('passwordConfirm').value; // ⭐ NUOVO
             const Phone = document.getElementById('Phone').value;
+
+            // ⭐ VALIDAZIONE AGGIUNTA
+            if (email !== emailConfirm) {
+                alert('Errore: L\'email e la conferma email non corrispondono.');
+                return;
+            }
+            if (password !== passwordConfirm) {
+                alert('Errore: La password e la conferma password non corrispondono.');
+                return;
+            }
+            
             signUp(email, password, nomeSocieta, Phone);
+        });
+    }
+
+    // ⭐ NUOVO LISTENER PER RECUPERO PASSWORD
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = prompt('Inserisci l\'email associata al tuo account per recuperare la password:');
+            if (email) {
+                forgotPassword(email);
+            }
         });
     }
     
