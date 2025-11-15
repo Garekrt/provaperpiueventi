@@ -126,6 +126,8 @@ async function fetchAthletes(filterEventId = null) {
 }
 
 // Fetch society name on page load if user is logged in
+// MODIFICA IN script.js (funzione fetchSocietyNameOnLoad)
+
 async function fetchSocietyNameOnLoad() {
     const user = await supabase.auth.getUser();
     if (user.data?.user?.id) {
@@ -138,13 +140,16 @@ async function fetchSocietyNameOnLoad() {
         if (societyError) {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
-            document.getElementById('societyNameDisplay').textContent = societyData.nome;
+            // ⭐ MODIFICA: Controlla PRIMA se l'elemento esiste
+            const societyNameDisplay = document.getElementById('societyNameDisplay');
+            if (societyNameDisplay) { 
+                societyNameDisplay.textContent = societyData.nome;
+            }
             
-            // CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI 
+            // ... (resto della logica, che riguarda index.html)
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event_id');
             
-            // Aggiorna l'interfaccia se un evento è stato selezionato
             const currentEventDisplay = document.getElementById('currentEventDisplay');
             if (currentEventDisplay) {
                 if (eventId) {
@@ -154,8 +159,7 @@ async function fetchSocietyNameOnLoad() {
                 }
             }
             
-            // Avvia il caricamento degli atleti (con o senza filtro)
-            if (document.getElementById('athleteList')) { // Esegui solo se sei su index.html
+            if (document.getElementById('athleteList')) {
                 fetchAthletes(eventId);
             }
         }
