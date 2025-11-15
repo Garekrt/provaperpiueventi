@@ -25,7 +25,7 @@ async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
-        // ⭐️ MODIFICATO: Reindirizza alla pagina di selezione evento ⭐️
+        // REINDIRIZZA ALLA PAGINA DI SELEZIONE EVENTO 
         window.location.href = '/event_selector.html'; 
     } catch (error) {
         console.error('Errore:', error.message);
@@ -72,7 +72,7 @@ async function fetchAthletes(filterEventId = null) {
         let athletesData = [];
         let error = null;
 
-        // ⭐️ LOGICA DI FILTRO ⭐️
+        // LOGICA DI FILTRO 
         if (filterEventId) {
              // Recupera solo gli atleti iscritti all'evento X, con i dettagli dell'evento
             const { data: subscriptionData, error: subError } = await supabase
@@ -115,7 +115,7 @@ async function fetchAthletes(filterEventId = null) {
         }
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
-        await updateAllCounters(filterEventId); // ⭐️ PASSA L'ID EVENTO ⭐️
+        await updateAllCounters(filterEventId); // PASSA L'ID EVENTO 
         await populateEventSelector('eventSelector'); 
         await showAdminSection(); 
 
@@ -140,19 +140,24 @@ async function fetchSocietyNameOnLoad() {
         } else if (societyData) {
             document.getElementById('societyNameDisplay').textContent = societyData.nome;
             
-            // ⭐️ CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI ⭐️
+            // CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI 
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event_id');
             
             // Aggiorna l'interfaccia se un evento è stato selezionato
-            if (eventId) {
-                document.getElementById('currentEventDisplay').textContent = eventId;
-            } else {
-                 document.getElementById('currentEventDisplay').textContent = 'Nessun Evento Selezionato';
+            const currentEventDisplay = document.getElementById('currentEventDisplay');
+            if (currentEventDisplay) {
+                if (eventId) {
+                    currentEventDisplay.textContent = eventId;
+                } else {
+                    currentEventDisplay.textContent = 'Nessun Evento Selezionato';
+                }
             }
             
             // Avvia il caricamento degli atleti (con o senza filtro)
-            fetchAthletes(eventId);
+            if (document.getElementById('athleteList')) { // Esegui solo se sei su index.html
+                fetchAthletes(eventId);
+            }
         }
     }
 }
@@ -191,8 +196,7 @@ async function getAdminSocietyId() {
 }
 
 // Inizializza l'ascoltatore per il loginForm e l'esecuzione al caricamento
-document.addEventListener('DOMContentLoaded', () => {
-    // ... (Listener per loginForm e registrazioneForm - non modificati) ...
+document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO 'async'
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -215,6 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Esegue il fetch del nome società (che a sua volta chiama fetchAthletes)
-    fetchSocietyNameOnLoad(); 
+    // Esegue il fetch del nome società (che a sua volta chiama fetchAthletes solo su index.html)
+    await fetchSocietyNameOnLoad(); 
 });
