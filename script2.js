@@ -71,30 +71,28 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
 
 // Funzione per aggiornare i contatori di tutte le specialità
+// script2.js (riga ~75)
+
 async function updateAllCounters(eventId = null) {
-    const specialties = ["Kumite", "Kata", "ParaKarate", "GTP-Tecnica-libera"]; // Usiamo GTP come chiave per KIDS
+    // ⭐ USA LE CHIAVI DI CONTEGGIO: Kumite, Kata, ParaKarate, KIDS
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"]; 
     
-    // Nascondi lo status container se non c'è evento selezionato
-    const statsContainer = document.querySelector('.stats-container');
-    if (!eventId) {
-        if (statsContainer) statsContainer.style.display = 'none';
-        // Nascondi anche l'area form se nessun evento è attivo
-        if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'none';
-        return;
-    }
-    if (statsContainer) statsContainer.style.display = 'block';
-    if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'block';
+    // ... (Logica di visualizzazione/nascondimento) ...
 
+    for (const specialty of specialties) { 
+        
+        const countKey = specialty; // 'Kumite', 'Kata', 'ParaKarate', 'KIDS'
 
-    for (const specialty of specialties) {
-        const isKids = specialty.startsWith('GTP');
-        const countKey = isKids ? 'KIDS' : specialty;
+        // ⭐ QUANDO LA CHIAVE È 'KIDS', CHIAMIAMO LA FUNZIONE CON UNA DELLE SOTTOCATEGORIE GTP
+        // getSpecialtyCount('GTP-Tecnica-libera', eventId) ritornerà il conteggio totale di entrambi i GTP.
+        const specialtyToCount = (specialty === 'KIDS') ? 'GTP-Tecnica-libera' : specialty;
         
         // Calcola il limite e il conteggio
-        const maxLimit = await getMaxAthletesForSpecialty(specialty, eventId);
-        const count = await getSpecialtyCount(specialty, eventId);
+        const maxLimit = await getMaxAthletesForSpecialty(specialtyToCount, eventId);
+        const count = await getSpecialtyCount(specialtyToCount, eventId);
         
         const displayElement = document.getElementById(`${countKey}AthleteCountDisplay`);
+        // ... (resto della funzione) ...
         if (displayElement) {
             displayElement.textContent = `${count} / ${maxLimit}`;
             if (count >= maxLimit) {
@@ -104,6 +102,9 @@ async function updateAllCounters(eventId = null) {
             }
         }
     }
+    
+    await showAdminLimitsSection(eventId);
+}
     
     // Carica la sezione Admin Limiti 
     await showAdminLimitsSection(eventId);
