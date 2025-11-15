@@ -10,8 +10,8 @@
  * Se eventId è null, usa i limiti predefiniti (come fallback o per l'Admin).
  */
 async function getMaxAthletesForSpecialty(specialty, eventId = null) {
-    // 1. Se l'evento è noto e NON è Admin, cerca il limite nella tabella `limiti_evento`.
-    if (eventId && !await isCurrentUserAdmin()) {
+    // 1. Se l'evento è noto, cerca il limite nella tabella `limiti_evento`.
+    if (eventId) {
         const key = (specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata') ? 'KIDS' : specialty;
         
         const { data, error } = await supabase
@@ -24,15 +24,15 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
         if (data && data.limite_max !== undefined) {
             return data.limite_max;
         }
-        // Se non trova il limite specifico, usa un limite sicuro molto basso per evitare overflow
-        // Sarà compito dell'Admin impostare i limiti corretti.
+        // Se non trova il limite specifico, cade al limite predefinito, ma lancia un warning
         console.warn(`Limite non trovato per ${key} nell'evento ${eventId}. Usando limite predefinito.`);
     } 
 
-    // 2. Limiti Predefiniti (usati dall'Admin o se il limite non è impostato)
+    // 2. Limiti Predefiniti 
     if (specialty === "Kumite") return 400;
     if (specialty === "Kata") return 250;
     if (specialty === "ParaKarate") return 50;
+    // Limite KIDS unificato
     if (specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata') return 400;
     
     return Infinity;
@@ -42,43 +42,22 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
 async function getSpecialtyCount(specialty, eventId = null) {
     const isKids = specialty === 'GTP-Tecnica-libera' || specialty === 'GTP-Kata';
     
-    // Controlla il conteggio solo se c'è un evento attivo
-    if (!eventId) return 0;
+    if (!eventId) return 0; // Se nessun evento, il conteggio per evento è 0
 
     let query = supabase
         .from('iscrizioni_eventi')
         .select(`
-            atleta_id,
             atleti(specialty)
         `, { count: 'exact', head: true })
         .eq('evento_id', eventId);
-
+    
+    // Filtriamo la specialità corretta nella tabella atleti tramite la join
     if (isKids) {
          const specialtyList = ["GTP-Tecnica-libera", "GTP-Kata"];
-         // Questo è complesso: Supabase non supporta .in() su colonne joinate in RLS complessa.
-         // Un workaround efficiente è contare tutti e filtrare in memoria, ma con RLS attiva, 
-         // facciamo affidamento sul conteggio totale degli atleti già iscritti all'evento e poi filtriamo.
-         // Per ora, contiamo solo gli iscritti all'evento e assumiamo che il limite KIDS copra tutti.
-         // La RLS filtrerà solo gli atleti visibili. Contiamo tutti gli iscritti all'evento.
-         // **SOLUZIONE PIÙ ROBUSTA**: Se è KIDS, contiamo solo gli iscritti KIDS
-         
-         query = supabase
-            .from('iscrizioni_eventi')
-            .select(`
-                atleti(specialty)
-            `, { count: 'exact', head: true })
-            .eq('evento_id', eventId)
-            .in('atleti.specialty', specialtyList);
+         query = query.in('atleti.specialty', specialtyList);
             
     } else {
-        // Se non è KIDS, contiamo gli iscritti a quell'evento con quella specialità
-        query = supabase
-            .from('iscrizioni_eventi')
-            .select(`
-                atleti(specialty)
-            `, { count: 'exact', head: true })
-            .eq('evento_id', eventId)
-            .eq('atleti.specialty', specialty);
+        query = query.eq('atleti.specialty', specialty);
     }
     
     const { count, error } = await query;
@@ -99,9 +78,13 @@ async function updateAllCounters(eventId = null) {
     const statsContainer = document.querySelector('.stats-container');
     if (!eventId) {
         if (statsContainer) statsContainer.style.display = 'none';
+        // Nascondi anche l'area form se nessun evento è attivo
+        if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'none';
         return;
     }
     if (statsContainer) statsContainer.style.display = 'block';
+    if (document.getElementById('athleteForm')) document.getElementById('athleteForm').style.display = 'block';
+
 
     for (const specialty of specialties) {
         const isKids = specialty.startsWith('GTP');
@@ -122,17 +105,16 @@ async function updateAllCounters(eventId = null) {
         }
     }
     
-    // Carica la sezione Admin Limiti (nuova funzione)
+    // Carica la sezione Admin Limiti 
     await showAdminLimitsSection(eventId);
 }
 
 
 //================================================================================
-// 2. GESTIONE FORM E LOGICA DI CLASSE (omessa per brevità, assumiamo sia OK)
+// 2. GESTIONE FORM E LOGICA DI CLASSE
 //================================================================================
 
 function calculateClassAndWeight(birthDate, gender) {
-    // ... (Logica di calculateClassAndWeight non modificata) ...
     const today = new Date();
     const birth = new Date(birthDate);
     const birthYear = birth.getFullYear();
@@ -222,10 +204,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// Funzione addAthlete (modificata per usare i nuovi limiti)
+
+
+// Funzione per l'aggiunta di un nuovo atleta
 async function addAthlete() {
     const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const gender = document.getElementById('gender').value;
+    const birthdate = document.getElementById('birthdate').value;
+    const classe = document.getElementById('classe').value;
     const specialty = document.getElementById('specialty').value;
+    const weightCategory = document.getElementById('weightCategory').value;
+    const belt = document.getElementById('belt').value;
+    
     // Recupera l'ID Evento dall'URL
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event_id');
@@ -235,7 +226,6 @@ async function addAthlete() {
         return;
     }
     
-    // ... (Codice per recupero societyId omesso per brevità)
     const user = await supabase.auth.getUser();
     if (!user.data?.user?.id) {
         alert("Utente non autenticato.");
@@ -254,9 +244,8 @@ async function addAthlete() {
         return;
     }
     const societyId = society.id;
-    // ... (Fine codice per recupero societyId)
 
-    // ⭐️ VERIFICA NUOVI LIMITI PER EVENTO ⭐️
+    // VERIFICA NUOVI LIMITI PER EVENTO 
     const currentSpecialtyCount = await getSpecialtyCount(specialty, eventId);
     const maxLimit = await getMaxAthletesForSpecialty(specialty, eventId);
     
@@ -270,8 +259,14 @@ async function addAthlete() {
         .from('atleti')
         .insert([{
             first_name: firstName,
-            // ... (altri campi)
-            society_id: societyId 
+            last_name: lastName,
+            gender: gender,
+            birthdate: birthdate,
+            classe: classe,
+            specialty: specialty,
+            weight_category: weightCategory || null,
+            belt: belt,
+            society_id: societyId
         }])
         .select()
         .single();
@@ -292,7 +287,6 @@ async function addAthlete() {
         }]);
 
     if (subError) {
-        // Se l'iscrizione fallisce, dovresti rimuovere l'atleta, ma per semplicità avvisiamo
         console.error('Errore nell\'iscrizione automatica all\'evento:', subError.message);
         alert('Atleta aggiunto, ma l\'iscrizione automatica all\'evento è fallita! Riprova iscrizione manuale.');
     } else {
@@ -306,8 +300,7 @@ async function addAthlete() {
 
 // Funzione per rimuovere un atleta
 async function removeAthlete(athleteId, rowElement) {
-    // ... (Logica di rimozione non modificata) ...
-    if (!confirm("Sei sicuro di voler rimuovere questo atleta?")) {
+    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
         return;
     }
 
@@ -330,8 +323,47 @@ async function removeAthlete(athleteId, rowElement) {
 }
 
 
+// Funzione per popolare la tabella atleti
+function addAthleteToTable(athlete, eventId = null) { 
+    const athleteList = document.getElementById('athleteList');
+    const row = athleteList.insertRow();
+    
+    row.insertCell().textContent = athlete.first_name;
+    row.insertCell().textContent = athlete.last_name;
+    row.insertCell().textContent = athlete.gender;
+    row.insertCell().textContent = athlete.birthdate;
+    row.insertCell().textContent = athlete.belt;
+    row.insertCell().textContent = athlete.classe;
+    row.insertCell().textContent = athlete.specialty;
+    row.insertCell().textContent = athlete.weight_category || 'N/D';
+    row.insertCell().textContent = athlete.society_id;
+
+    const statusCell = row.insertCell();
+    const isFilteredByEvent = athlete.iscritti_evento_nome; // Verifica se i dati di iscrizione sono presenti nel record
+
+    if (isFilteredByEvent) {
+        statusCell.textContent = `${athlete.iscritti_evento_nome} (${athlete.iscritti_evento_stato})`;
+        statusCell.style.backgroundColor = '#d4edda';
+    } else if (eventId) {
+        statusCell.textContent = 'Non iscritto all\'evento selezionato';
+        statusCell.style.backgroundColor = '#f8d7da';
+    } else {
+        statusCell.textContent = 'Nessun filtro evento attivo';
+    }
+    
+    const actionsCell = row.insertCell();
+    
+    const removeButton = document.createElement('button');
+    removeButton.textContent = 'Rimuovi';
+    removeButton.classList.add('btn', 'btn-danger', 'btn-sm', 'mb-1');
+    removeButton.addEventListener('click', () => removeAthlete(athlete.id, row));
+    actionsCell.appendChild(removeButton);
+
+}
+
+
 //================================================================================
-// GESTIONE EVENTI E FILTRI
+// GESTIONE EVENTI, ADMIN E LIMITI
 //================================================================================
 
 // Funzione ADMIN: Mostra la sezione di creazione Eventi
@@ -351,7 +383,7 @@ async function showAdminSection() {
     }
 }
 
-// ⭐️ NUOVA FUNZIONE ADMIN: Sezione per la gestione dei Limiti per Evento ⭐️
+// NUOVA FUNZIONE ADMIN: Sezione per la gestione dei Limiti per Evento 
 async function showAdminLimitsSection(eventId) {
     const adminLimitsSection = document.getElementById('adminLimitsConfig');
     if (!adminLimitsSection) return;
@@ -381,15 +413,18 @@ async function loadEventLimits(eventId) {
         return acc;
     }, {}) || {};
 
-    specialties.forEach(spec => {
-        const currentLimit = existingLimits[spec] !== undefined ? existingLimits[spec] : await getMaxAthletesForSpecialty(spec);
+    // Usa getMaxAthletesForSpecialty per ottenere i default se non sono impostati
+    for (const spec of specialties) {
+        const defaultLimit = await getMaxAthletesForSpecialty(spec); 
+        const currentLimit = existingLimits[spec] !== undefined ? existingLimits[spec] : defaultLimit;
+        
         limitContainer.innerHTML += `
-            <div class="form-group">
-                <label for="limit-${spec}">${spec} (Default: ${await getMaxAthletesForSpecialty(spec)})</label>
+            <div class="form-group col-md-3">
+                <label for="limit-${spec}">${spec} (Default: ${defaultLimit})</label>
                 <input type="number" id="limit-${spec}" data-specialty="${spec}" value="${currentLimit}" min="0" class="form-control">
             </div>
         `;
-    });
+    }
 }
 
 // Funzione ADMIN: Salva i limiti aggiornati
@@ -424,7 +459,6 @@ async function saveEventLimits() {
 
 // Funzione ADMIN: Creazione di un nuovo Evento (Rinominata per evitare conflitto DOM).
 async function handleCreateEvent() { 
-    // ... (Logica di creazione evento non modificata) ...
     if (!await isCurrentUserAdmin()) {
         alert('Accesso negato. Solo l\'amministratore può creare eventi.');
         return;
@@ -503,72 +537,4 @@ async function populateEventSelector(selectorId) {
     if (eventId) {
          selector.value = eventId;
     }
-}
-
-// Funzioni di navigazione (filtro) non più necessarie in index.html, 
-// ma rimosse o semplificate per coerenza:
-async function filterAthletesBySelectedEvent() {
-    const eventId = document.getElementById('eventSelector').value;
-    if (!eventId) {
-        alert("Seleziona un evento prima di filtrare.");
-        return;
-    }
-    // Ricarica la pagina con il filtro URL
-    window.location.href = `index.html?event_id=${eventId}`;
-}
-
-async function resetAthleteFilter() {
-    // Ricarica la pagina senza il filtro URL
-    window.location.href = 'index.html'; 
-}
-
-// Funzioni addAthleteToTable e altre non modificate in questa sezione.
-function addAthleteToTable(athlete, eventId = null) { 
-    // ... (La logica di addAthleteToTable è la stessa, usa l'ID evento per lo stato) ...
-    const athleteList = document.getElementById('athleteList');
-    const row = athleteList.insertRow();
-    
-    // ... (Celle Atleta) ...
-    row.insertCell().textContent = athlete.first_name;
-    row.insertCell().textContent = athlete.last_name;
-    row.insertCell().textContent = athlete.gender;
-    row.insertCell().textContent = athlete.birthdate;
-    row.insertCell().textContent = athlete.belt;
-    row.insertCell().textContent = athlete.classe;
-    row.insertCell().textContent = athlete.specialty;
-    row.insertCell().textContent = athlete.weight_category || 'N/D';
-    row.insertCell().textContent = athlete.society_id;
-
-    const statusCell = row.insertCell();
-    const isFilteredByEvent = athlete.iscritti_evento_nome; // Verifica se i dati di iscrizione sono presenti nel record
-
-    if (isFilteredByEvent) {
-        statusCell.textContent = `${athlete.iscritti_evento_nome} (${athlete.iscritti_evento_stato})`;
-        statusCell.style.backgroundColor = '#d4edda';
-    } else if (eventId) {
-        statusCell.textContent = 'Non iscritto all\'evento selezionato';
-        statusCell.style.backgroundColor = '#f8d7da';
-    } else {
-        statusCell.textContent = 'Nessun filtro evento attivo';
-    }
-    
-    const actionsCell = row.insertCell();
-    
-    const removeButton = document.createElement('button');
-    removeButton.textContent = 'Rimuovi';
-    removeButton.classList.add('btn', 'btn-danger', 'btn-sm', 'mb-1');
-    removeButton.addEventListener('click', () => removeAthlete(athlete.id, row));
-    actionsCell.appendChild(removeButton);
-
-    const subscribeButton = document.createElement('button');
-    // Il pulsante "Iscrivi Evento" non è più necessario in questo flusso, 
-    // poiché l'atleta viene iscritto automaticamente al momento dell'aggiunta se c'è un evento nell'URL.
-    // Lo nascondiamo o lo cambiamo in "Rimuovi Iscrizione"
-    subscribeButton.textContent = 'Rimuovi Iscriz.';
-    subscribeButton.classList.add('btn', 'btn-info', 'btn-sm', 'mt-1');
-    subscribeButton.addEventListener('click', () => {
-         alert('Funzione "Rimuovi Iscrizione" non implementata. Rimuovi l\'atleta completamente per ora.');
-    });
-    // Rimuovi il pulsante per evitare confusione (l'iscrizione è automatica)
-    // actionsCell.appendChild(subscribeButton); 
 }
