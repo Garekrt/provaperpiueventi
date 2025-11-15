@@ -24,7 +24,9 @@ async function signIn(email, password) {
     try {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        window.location.href = '/index.html';
+        
+        // ⭐️ MODIFICATO: Reindirizza alla pagina di selezione evento ⭐️
+        window.location.href = '/event_selector.html'; 
     } catch (error) {
         console.error('Errore:', error.message);
         alert('Errore di accesso: ' + error.message);
@@ -43,7 +45,7 @@ async function signOut() {
 }
 
 //================================================================================
-// ⭐️ FUNZIONE PRINCIPALE: FETCH ATLETI (AGGIORNATA PER IL FILTRO) ⭐️
+// FUNZIONE PRINCIPALE: FETCH ATLETI (AGGIORNATA PER IL FILTRO E PARAMETRO EVENTO)
 //================================================================================
 /**
  * Recupera gli atleti della società loggata.
@@ -58,7 +60,6 @@ async function fetchAthletes(filterEventId = null) {
             return;
         }
 
-        // 1. Trova l'ID della società basato sull'user_id
         const { data: society, error: societyError } = await supabase
             .from('societa')
             .select('id')
@@ -90,7 +91,7 @@ async function fetchAthletes(filterEventId = null) {
                 .map(sub => ({ 
                     ...sub.atleti, 
                     iscritti_evento_nome: sub.eventi.nome,
-                    iscritti_evento_stato: 'Iscritto' // Lo stato 'Iscritto' è implicito dal filtro
+                    iscritti_evento_stato: 'Iscritto' 
                 }));
 
         } else {
@@ -106,16 +107,15 @@ async function fetchAthletes(filterEventId = null) {
 
         if (error) throw error;
 
-        // Pulisci la tabella esistente e popola con i dati
         const athleteList = document.getElementById('athleteList');
         if (athleteList) {
             athleteList.innerHTML = '';
-            // Passa il flag filterEventId (true/false) alla funzione per aggiornare la colonna Stato Iscrizione
-            athletesData.forEach(athlete => addAthleteToTable(athlete, !!filterEventId)); 
+            // Passa l'ID evento per mostrare correttamente lo stato di iscrizione
+            athletesData.forEach(athlete => addAthleteToTable(athlete, filterEventId)); 
         }
         
         // Esegue le funzioni di aggiornamento (definite in script2.js)
-        await updateAllCounters(); 
+        await updateAllCounters(filterEventId); // ⭐️ PASSA L'ID EVENTO ⭐️
         await populateEventSelector('eventSelector'); 
         await showAdminSection(); 
 
@@ -139,19 +139,31 @@ async function fetchSocietyNameOnLoad() {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
             document.getElementById('societyNameDisplay').textContent = societyData.nome;
-            // Recupera gli atleti al caricamento (senza filtro)
-            fetchAthletes();
+            
+            // ⭐️ CARICA IL FILTRO DALL'URL E RECUPERA GLI ATLETI ⭐️
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = urlParams.get('event_id');
+            
+            // Aggiorna l'interfaccia se un evento è stato selezionato
+            if (eventId) {
+                document.getElementById('currentEventDisplay').textContent = eventId;
+            } else {
+                 document.getElementById('currentEventDisplay').textContent = 'Nessun Evento Selezionato';
+            }
+            
+            // Avvia il caricamento degli atleti (con o senza filtro)
+            fetchAthletes(eventId);
         }
     }
 }
 
 
 //================================================================================
-// NUOVE FUNZIONI UTILITY PER GESTIONE ADMIN E EVENTI
+// FUNZIONI UTILITY PER GESTIONE ADMIN E EVENTI
 //================================================================================
 
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
-const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
+const ADMIN_USER_ID = 'PLACEHOLDER_YOUR_ADMIN_UUID'; 
 
 let ADMIN_SOCIETY_ID = null;
 
@@ -180,6 +192,7 @@ async function getAdminSocietyId() {
 
 // Inizializza l'ascoltatore per il loginForm e l'esecuzione al caricamento
 document.addEventListener('DOMContentLoaded', () => {
+    // ... (Listener per loginForm e registrazioneForm - non modificati) ...
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -202,5 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Esegue il fetch del nome società (che a sua volta chiama fetchAthletes)
     fetchSocietyNameOnLoad(); 
 });
