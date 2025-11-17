@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Modulo Iscrizione Atleti</title>
+    <title>Modulo di Iscrizione Atleti</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
         integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous" />
     <style>
@@ -27,262 +27,198 @@
             margin-right: 20px;
         }
 
-        h1 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
-        }
-
-        label {
-            display: block;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-
-        input[type="text"],
-        input[type="date"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 15px;
-        }
-
-        .form-row>div {
-            flex: 1;
-        }
-        /* Fix per i form-group interni alla sezione limiti */
-        #adminLimitsConfig .form-group {
-             flex: 1 1 23%; 
-        }
-
-        button.btn {
-            margin-top: 20px;
-        }
-
-        #athleteTable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        #athleteTable th,
-        #athleteTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            font-size: 0.85em;
-        }
-
-        #athleteTable th {
-            background-color: #007bff;
-            color: white;
-        }
-
+        /* Stili aggiuntivi se necessario */
         .stats-container {
-            width: 300px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 20px;
-        }
-
-        .stats-container h2 {
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 10px;
-        }
-        
-        .btn-sm.mb-1, .btn-sm.mt-1 {
-            width: 100%;
-            display: block;
-            margin-top: 5px !important;
+            margin-top: 20px;
         }
     </style>
 </head>
 
 <body>
     <div class="form-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1>Gestione Atleti Società</h1>
-            <div style="text-align: right;">
-                <p>Società: <strong id="societyNameDisplay">Caricamento...</strong></p>
-                <button onclick="signOut()" class="btn btn-warning btn-sm">Logout</button>
-            </div>
-        </div>
-        
-        <div style="padding: 10px; background-color: #e6f7ff; border: 1px solid #91d5ff; border-radius: 5px; margin-bottom: 20px;">
-            <p style="margin: 0;">ID Evento Attivo: <strong><span id="currentEventDisplay">Nessun Evento Selezionato</span></strong></p>
-            <small><a href="event_selector.html">Cambia Evento / Gestione Generica</a></small>
-        </div>
+        <h1>Gestione Atleti</h1>
+        <p>Società: <span id="societyNameDisplay">Caricamento...</span></p>
+        <p>Evento Attuale: <span id="currentEventDisplay">Nessuno</span></p>
+        <button onclick="signOut()">Logout</button>
+        <hr>
 
+        <label for="eventSelector">Seleziona Evento:</label>
+        <select id="eventSelector" onchange="window.location.href = 'index.html?event_id=' + this.value;">
+            </select>
+        <hr>
 
-        <div id="adminEventCreation" style="display:none; background-color: #fff3cd; padding: 20px; border-radius: 5px; margin-bottom: 30px; border: 1px dashed #DC3545;">
-            <h3 style="color: #DC3545;">[ADMIN MODE] Crea Nuovo Evento</h3>
-            <p style="font-size: 0.8em; color: #DC3545;">ID Società Organizzatrice Admin: <span id="adminSocietyIdDisplay">Caricamento...</span></p>
-            <form id="eventForm">
-                <div class="form-row">
-                    <div>
-                        <label for="eventName">Nome Evento:</label>
-                        <input type="text" id="eventName" name="eventName" required>
-                    </div>
-                    <div>
-                        <label for="eventDate">Data Evento:</label>
-                        <input type="date" id="eventDate" name="eventDate" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div>
-                        <label for="eventLocation">Luogo:</label>
-                        <input type="text" id="eventLocation" name="eventLocation" required>
-                    </div>
-                    <div>
-                        <label for="eventFee">Quota Iscrizione (€):</label>
-                        <input type="number" id="eventFee" name="eventFee" value="0" min="0">
-                    </div>
-                </div>
-                <label for="eventDescription">Descrizione (Opzionale):</label>
-                <input type="text" id="eventDescription" name="eventDescription">
-                
-                <button type="button" onclick="handleCreateEvent()" class="btn btn-danger">Crea Evento</button>
-            </form>
+        <div class="stats-container">
+            <h2>Statistiche Iscrizioni Evento</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Specialità</th>
+                        <th>Iscritti (Attuali / Totali)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Kumite</td>
+                        <td id="KumiteAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kata</td>
+                        <td id="KataAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>ParaKarate</td>
+                        <td id="ParaKarateAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>KIDS (Percorso)</td>
+                        <td id="KIDSAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kata Squadre</td>
+                        <td id="KataSquadreAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kumite Squadre</td>
+                        <td id="KumiteSquadreAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+        <hr>
 
-        <div id="adminLimitsConfig" style="display:none; background-color: #d4edda; padding: 20px; border-radius: 5px; margin-bottom: 30px; border: 1px dashed #155724;">
-            <h3 style="color: #155724;">[ADMIN MODE] Limiti per Evento ID: <span id="limitsEventId"></span></h3>
-            <p style="font-size: 0.9em;">Imposta il numero massimo di atleti per specialità per l'evento attivo.</p>
-            <div id="limitInputs" class="form-row">
-                </div>
-            <button type="button" onclick="saveEventLimits()" class="btn btn-success">Salva Limiti Evento</button>
-        </div>
+        <h2>Iscrizione Atleta Individuale</h2>
         <form id="athleteForm">
-            <h3>Dati Atleta e Iscrizione all'Evento Attivo</h3>
-             <div class="form-row">
-                <div>
-                    <label for="firstName">Nome:</label>
-                    <input type="text" id="firstName" required>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="firstName">Nome</label>
+                    <input type="text" class="form-control" id="firstName" required>
                 </div>
-                <div>
-                    <label for="lastName">Cognome:</label>
-                    <input type="text" id="lastName" required>
+                <div class="form-group col-md-4">
+                    <label for="lastName">Cognome</label>
+                    <input type="text" class="form-control" id="lastName" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="birthdate">Data di Nascita</label>
+                    <input type="date" class="form-control" id="birthdate" required>
                 </div>
             </div>
             <div class="form-row">
-                <div>
-                    <label for="gender">Sesso:</label>
-                    <select id="gender" required>
+                <div class="form-group col-md-3">
+                    <label for="gender">Sesso</label>
+                    <select id="gender" class="form-control" required>
                         <option value="">Seleziona...</option>
-                        <option value="M">Maschio</option>
-                        <option value="F">Femmina</option>
+                        <option value="Maschio">Maschio</option>
+                        <option value="Femmina">Femmina</option>
                     </select>
                 </div>
-                <div>
-                    <label for="birthdate">Data di Nascita:</label>
-                    <input type="date" id="birthdate" required>
+                <div class="form-group col-md-3">
+                    <label for="classe">Classe</label>
+                    <select id="classe" class="form-control" required>
+                        </select>
                 </div>
-            </div>
-
-            <div class="form-row">
-                <div>
-                    <label for="specialty">Specialità:</label>
-                    <select id="specialty" required>
-                        <option value="">Seleziona...</option>
-                    </select>
+                <div class="form-group col-md-3">
+                    <label for="specialty">Specialità</label>
+                    <select id="specialty" class="form-control" required>
+                        </select>
                 </div>
-                <div>
-                    <label for="belt">Cintura:</label>
-                    <select id="belt" required>
-                        <option value="">Seleziona...</option>
-                        <option value="Bianca">Bianca</option>
-                        <option value="Gialla">Gialla</option>
-                        <option value="Arancio">Arancio</option>
-                        <option value="Verde">Verde</option>
-                        <option value="Blu">Blu</option>
-                        <option value="Marrone">Marrone</option>
-                        <option value="Nera">Nera</option>
-                    </select>
+                <div class="form-group col-md-3">
+                    <label for="belt">Cintura</label>
+                    <select id="belt" class="form-control" required>
+                        </select>
                 </div>
             </div>
             <div class="form-row">
-                <div>
-                    <label for="classe">Classe (Calcolata):</label>
-                    <select id="classe" disabled>
-                        <option value="">Inserisci data di nascita</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="weightCategory">Cat. di Peso (Selezionabile):</label>
-                    <select id="weightCategory" disabled>
-                        <option value="">N/D</option>
-                    </select>
+                 <div class="form-group col-md-6">
+                    <label for="weightCategory">Categoria di Peso (Solo Kumite/ParaKarate)</label>
+                    <select id="weightCategory" class="form-control" disabled>
+                        </select>
                 </div>
             </div>
-
-            <button type="submit" class="btn btn-primary">Aggiungi Atleta e Iscrivi all'Evento Attivo</button>
+            <button type="submit" class="btn btn-primary">Aggiungi Atleta</button>
         </form>
+        <hr>
 
+        <h2>Iscrizione Squadra</h2>
+        <form id="teamForm">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="teamName">Nome Squadra (es. "Società X Team A")</label>
+                    <input type="text" class="form-control" id="teamName" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="teamSpecialty">Specialità Squadra</label>
+                    <select id="teamSpecialty" class="form-control" required>
+                        <option value="">Seleziona...</option>
+                        <option value="Kata Squadre">Kata Squadre</option>
+                        <option value="Kumite Squadre">Kumite Squadre</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="teamMembers">Membri della Squadra (max 5, min 3 - separati da virgola)</label>
+                <textarea class="form-control" id="teamMembers" rows="3" placeholder="Nome Cognome Atleta 1, Nome Cognome Atleta 2, Nome Cognome Atleta 3, ... (Max 5)" required></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="teamClasse">Classe (Categoria)</label>
+                    <select id="teamClasse" class="form-control" required>
+                        <option value="">Seleziona...</option>
+                        <option value="Esordienti">Esordienti</option>
+                        <option value="Cadetti">Cadetti</option>
+                        <option value="Juniores">Juniores</option>
+                        <option value="Seniores">Seniores</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="teamBelt">Cintura Squadra</label>
+                    <select id="teamBelt" class="form-control" required>
+                        <option value="Marrone-Nera">Marrone/Nera</option>
+                        <option value="Blu-Marrone">Blu/Marrone</option>
+                    </select>
+                </div>
+                 <div class="form-group col-md-4">
+                    <label for="teamGender">Genere</label>
+                    <select id="teamGender" class="form-control" required>
+                        <option value="Maschio">Maschile</option>
+                        <option value="Femmina">Femminile</option>
+                        <option value="Misto">Misto</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Iscrivi Squadra</button>
+        </form>
+        <hr>
         
-        <h2>Lista Atleti Iscritti</h2>
-        <table id="athleteTable">
+
+        <h2>Atleti Iscritti all'Evento</h2>
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th>Nome</th>
-                    <th>Cognome</th>
+                    <th>Cognome/Tipo</th>
                     <th>Sesso</th>
-                    <th>Nato il</th>
+                    <th>Data Nascita/N/A</th>
                     <th>Cintura</th>
                     <th>Classe</th>
                     <th>Specialità</th>
-                    <th>Peso</th>
-                    <th>Società ID</th>
-                    <th>Iscritto a (Stato)</th> 
+                    <th>Peso/Membri</th> <th>ID Società</th>
+                    <th>Stato Iscrizione</th>
                     <th>Azioni</th>
                 </tr>
             </thead>
             <tbody id="athleteList">
                 </tbody>
         </table>
-    </div>
 
-    <div class="stats-container">
-        <h2>Statistiche Limiti Evento</h2>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Specialità</th>
-                    <th>Atleti (Iscritti / Limite)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Kumite</td>
-                    <td id="KumiteAthleteCountDisplay">Caricamento...</td>
-                </tr>
-                <tr>
-                    <td>Kata</td>
-                    <td id="KataAthleteCountDisplay">Caricamento...</td>
-                </tr>
-                <tr>
-                    <td>ParaKarate</td>
-                    <td id="ParaKarateAthleteCountDisplay">Caricamento...</td>
-                </tr>
-                <tr>
-                    <td>KIDS (GTP)</td>
-                    <td id="KIDSAthleteCountDisplay">Caricamento...</td>
-                </tr>
-            </tbody>
-        </table>
+        <div id="adminEventCreation" style="display:none;">
+            </div>
+        
+        <div id="adminLimitsConfig" style="display:none;">
+            </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -299,5 +235,4 @@
         checkAuth();
     </script>
 </body>
-
 </html>
