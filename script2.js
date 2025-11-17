@@ -2,7 +2,7 @@
 // Vengono usati ADMIN_USER_ID, fetchAthletes, isCurrentUserAdmin, getAdminSocietyId da script.js
 
 //================================================================================
-// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO (MODIFICATO PER ISOLARE LE SQUADRE)
+// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO (MODIFICATO: USA _ INVECE DI SPAZIO)
 //================================================================================
 
 /**
@@ -14,13 +14,14 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
 
     // 1. Cerca il limite specifico per l'evento nel DB
     if (eventId) {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('limiti_evento')
             .select('limite_max')
             .eq('evento_id', eventId)
-            .eq('specialty', key)
+            // La key ora è Kumite, Kata, KIDS, Kata_Squadre, Kumite_Squadre
+            .eq('specialty', key) 
             .single();
-
+        
         if (data && data.limite_max !== undefined) {
             return data.limite_max;
         }
@@ -28,8 +29,8 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
 
     // 2. Limiti Predefiniti
     
-    // ⭐ NUOVO: Limite di default per le Squadre (ALTO)
-    if (specialty === "Kata Squadre" || specialty === "Kumite Squadre") return 50; 
+    // Limite di default per le Squadre
+    if (specialty === "Kata_Squadre" || specialty === "Kumite_Squadre") return 50; 
     
     // Limiti per individuali
     if (key === "Kumite") return 6;
@@ -45,7 +46,8 @@ async function getSpecialtyCount(specialty, eventId = null) {
     if (!eventId) return 0;
     
     const isKids = specialty === "Percorso-Palloncino" || specialty === "Percorso-Kata" || specialty === "Palloncino";
-    const isTeamSpecialty = specialty === "Kata Squadre" || specialty === "Kumite Squadre"; // ⭐ NUOVO CHECK
+    // ⭐ USO DEL TRATTINO BASSO
+    const isTeamSpecialty = specialty === "Kata_Squadre" || specialty === "Kumite_Squadre"; 
 
     let specialtyList = [];
     if (isKids) {
@@ -56,18 +58,15 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
     let query = supabase
         .from('iscrizioni_eventi')
-        // Usiamo 'atleti!inner(specialty, is_team)' per la join
         .select(`atleta_id, atleti!inner(specialty, is_team)`, { count: 'exact', head: true }) 
         .eq('evento_id', eventId)
         .in('atleti.specialty', specialtyList);
     
-    // ⭐ FILTRO CRUCIALE: Controlla se è squadra o individuale
+    // FILTRO CRUCIALE: Controlla se è squadra o individuale
     if (isTeamSpecialty) {
-        // Se è una specialità squadra, conta SOLO i record con is_team = TRUE
-        query = query.eq('atleti.is_team', true);
+        query = query.eq('atleti.is_team', true); // Conta SOLO le squadre
     } else {
-        // Se è una specialità individuale, conta SOLO i record con is_team = FALSE
-        query = query.eq('atleti.is_team', false);
+        query = query.eq('atleti.is_team', false); // Conta SOLO gli individuali
     }
     
     const { count, error } = await query;
@@ -82,12 +81,12 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
 // Funzione per aggiornare i contatori di tutte le specialità
 async function updateAllCounters(eventId = null) {
-    // ⭐ AGGIUNTI "Kata Squadre" e "Kumite Squadre"
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"]; 
+    // ⭐ SPECIALITÀ AGGIORNATE CON TRATTINO BASSO
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"]; 
     
     const statsContainer = document.querySelector('.stats-container');
     const athleteForm = document.getElementById('athleteForm');
-    const teamForm = document.getElementById('teamForm'); 
+    const teamForm = document.getElementById('teamFormContainer'); // Usa il contenitore
 
     if (!eventId) {
         if (statsContainer) statsContainer.style.display = 'none';
@@ -97,11 +96,12 @@ async function updateAllCounters(eventId = null) {
     }
     if (statsContainer) statsContainer.style.display = 'block';
     if (athleteForm) athleteForm.style.display = 'block';
-    if (teamForm) teamForm.style.display = 'block'; 
-
+    // Il teamForm non viene mostrato automaticamente, ma il suo form parent sì
+    
 
     for (const specialty of specialties) {
-        const countKey = specialty.replace(/\s/g, ''); 
+        // Usa il nome con _ per l'ID HTML
+        const countKey = specialty; 
         const specialtyToCount = (specialty === 'KIDS') ? 'Percorso-Palloncino' : specialty;
         
         const maxLimit = await getMaxAthletesForSpecialty(specialtyToCount, eventId);
@@ -110,7 +110,8 @@ async function updateAllCounters(eventId = null) {
         const displayElement = document.getElementById(`${countKey}AthleteCountDisplay`);
         
         if (displayElement) {
-            const displayName = specialty.includes('Squadre') ? specialty : specialty;
+            // Sostituisce '_' con lo spazio per la visualizzazione all'utente
+            const displayName = specialty.replace(/_/g, ' '); 
             
             displayElement.textContent = `${count} / ${maxLimit}`;
             
@@ -129,12 +130,13 @@ async function updateAllCounters(eventId = null) {
 
 
 //================================================================================
-// NUOVA FUNZIONE: addTeam
+// NUOVA FUNZIONE: addTeam (MODIFICATO: USA _ NEI VALORI INVIATI)
 //================================================================================
 
 async function addTeam() {
     const teamName = document.getElementById('teamName').value;
-    const teamSpecialty = document.getElementById('teamSpecialty').value;
+    // ORA teamSpecialty sarà 'Kata_Squadre' o 'Kumite_Squadre'
+    const teamSpecialty = document.getElementById('teamSpecialty').value; 
     const teamMembersText = document.getElementById('teamMembers').value;
     const teamClasse = document.getElementById('teamClasse').value;
     const teamBelt = document.getElementById('teamBelt').value;
@@ -177,25 +179,24 @@ async function addTeam() {
     const maxLimit = await getMaxAthletesForSpecialty(teamSpecialty, eventId);
 
     if (currentTeamCount >= maxLimit) {
-        alert(`Limite massimo di ${maxLimit} squadre per la specialità ${teamSpecialty} raggiunto.`);
+        alert(`Limite massimo di ${maxLimit} squadre per la specialità ${teamSpecialty.replace(/_/g, ' ')} raggiunto.`);
         return;
     }
 
-    // 1. Inserimento Squadra (come record speciale in atleti)
+    // 1. Inserimento Squadra
     const { data: newTeam, error } = await supabase
         .from('atleti') 
         .insert([{
             first_name: teamName, 
             last_name: 'Squadra', 
             gender: teamGender,
-            // Dati fittizi, non rilevanti per la squadra:
             birthdate: '2000-01-01', 
             weight_category: null, 
             classe: teamClasse,
-            specialty: teamSpecialty, 
+            specialty: teamSpecialty, // ⭐ USA SPECIALTY CON TRATTINO BASSO
             belt: teamBelt,
             society_id: societyId,
-            is_team: true,             // ⭐ FLAG FONDAMENTALE
+            is_team: true,             
             team_members: teamMembersText 
         }])
         .select()
@@ -231,9 +232,8 @@ async function addTeam() {
 
 
 //================================================================================
-// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE (Nessuna modifica strutturale)
+// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE
 //================================================================================
-// ... (Mantieni le funzioni calculateAthleteAttributes, updateWeightCategoryOptions, addAthlete) ...
 
 function calculateAthleteAttributes(birthDate, gender) {
     const today = new Date();
@@ -517,7 +517,7 @@ async function addAthlete() {
 
 
 //================================================================================
-// 3. GESTIONE EVENTI E ADMIN (Nessuna Modifica strutturale)
+// 3. GESTIONE EVENTI E ADMIN
 //================================================================================
 
 async function showAdminSection() {
@@ -553,7 +553,8 @@ async function showAdminLimitsSection(eventId) {
 }
 
 async function loadEventLimits(eventId) {
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"];
+    // ⭐ AGGIORNATO CON TRATTINO BASSO
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"]; 
     const limitContainer = document.getElementById('limitInputs');
     if (!limitContainer) return;
     limitContainer.innerHTML = '';
@@ -575,7 +576,7 @@ async function loadEventLimits(eventId) {
         
         limitContainer.innerHTML += `
             <div class="form-group col-md-3">
-                <label for="limit-${spec}">${spec} (Default: ${defaultLimit})</label>
+                <label for="limit-${spec}">${spec.replace(/_/g, ' ')} (Default: ${defaultLimit})</label>
                 <input type="number" id="limit-${spec}" data-specialty="${spec}" value="${currentLimit}" min="0" class="form-control">
             </div>
         `;
@@ -584,7 +585,8 @@ async function loadEventLimits(eventId) {
 
 async function saveEventLimits() {
     const eventId = document.getElementById('limitsEventId').textContent;
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"];
+    // ⭐ AGGIORNATO CON TRATTINO BASSO
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"];
     
     if (!eventId) {
         alert("Errore: ID evento mancante.");
@@ -697,7 +699,7 @@ async function populateEventSelector(selectorId) {
 
 
 //================================================================================
-// 4. LISTENERS (Nessuna Modifica strutturale)
+// 4. LISTENERS 
 //================================================================================
 
 document.addEventListener('DOMContentLoaded', async () => { 
