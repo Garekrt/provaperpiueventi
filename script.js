@@ -15,7 +15,6 @@ async function signUp(email, password, nomeSocieta, Phone) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
-        // Questo inserimento ora dovrebbe funzionare dopo aver rimosso il vincolo 'societa_csf_key' nel DB
         const { error: societaError } = await supabase.from('societa').insert([{ nome: nomeSocieta, email: email, Phone:Phone, user_id: data.user.id }]);
         if (societaError) throw societaError;
 
@@ -32,7 +31,7 @@ async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
-        window.location.href = '/event_selector.html'; // O index.html se è la tua pagina principale
+        window.location.href = '/index.html'; // Porta a index.html
     } catch (error) {
         console.error('Errore:', error.message);
         alert('Errore di accesso: ' + error.message);
@@ -93,7 +92,7 @@ async function getAdminSocietyId() {
 }
 
 //================================================================================
-// FUNZIONE PER POPOLARE LA TABELLA ATLETI (AGGIORNATA PER LE SQUADRE)
+// FUNZIONE PER POPOLARE LA TABELLA ATLETI
 //================================================================================
 function addAthleteToTable(athlete, eventId = null) { 
     const athleteList = document.getElementById('athleteList');
@@ -101,16 +100,17 @@ function addAthleteToTable(athlete, eventId = null) {
 
     const row = athleteList.insertRow();
     
-    // ⭐ GESTIONE SQUADRE
+    // GESTIONE SQUADRE
     if (athlete.is_team) {
-        row.insertCell().textContent = athlete.first_name; // Nome Squadra
-        row.insertCell().textContent = 'SQUADRA'; // Etichetta fissa
+        row.insertCell().textContent = athlete.first_name; 
+        row.insertCell().textContent = 'SQUADRA'; 
         row.insertCell().textContent = athlete.gender;
-        row.insertCell().textContent = 'N/A'; // Data di nascita non applicabile
+        row.insertCell().textContent = 'N/A'; 
         row.insertCell().textContent = athlete.belt;
         row.insertCell().textContent = athlete.classe;
-        row.insertCell().textContent = athlete.specialty; // Specialità Squadre
-        row.insertCell().textContent = athlete.team_members || 'Membri non listati'; // NOMI MEMBRI
+        // Sostituisce il trattino basso per la visualizzazione
+        row.insertCell().textContent = athlete.specialty.replace(/_/g, ' '); 
+        row.insertCell().textContent = athlete.team_members || 'Membri non listati'; 
     } else {
         // Logica esistente per gli atleti individuali
         row.insertCell().textContent = athlete.first_name;
@@ -174,9 +174,8 @@ async function removeAthlete(athleteId, rowElement) {
 
 
 //================================================================================
-// FUNZIONE PRINCIPALE: FETCH ATLETI (Chiama le funzioni di script2.js)
+// FUNZIONE PRINCIPALE: FETCH ATLETI (Corretta per il controllo null)
 //================================================================================
-// (Questa funzione rimane come nelle versioni precedenti)
 
 async function fetchAthletes(filterEventId = null) {
     try {
@@ -197,7 +196,6 @@ async function fetchAthletes(filterEventId = null) {
 
         // LOGICA DI FILTRO 
         if (filterEventId) {
-            // Recupera sia gli atleti individuali che le squadre iscritte all'evento
             const { data: subscriptionData, error: subError } = await supabase
                 .from('iscrizioni_eventi')
                 .select(`
@@ -217,7 +215,6 @@ async function fetchAthletes(filterEventId = null) {
                 }));
 
         } else {
-            // Nessun filtro: recupera TUTTI i record (atleti e squadre) della società
             const { data: allAthletes, error: fetchError } = await supabase
                 .from('atleti')
                 .select('*')
@@ -230,7 +227,7 @@ async function fetchAthletes(filterEventId = null) {
         if (error) throw error;
 
         const athleteList = document.getElementById('athleteList');
-        if (athleteList) {
+        if (athleteList) { // ⭐ CONTROLLO NULL AGGIUNTO
             athleteList.innerHTML = '';
             athletesData.forEach(athlete => addAthleteToTable(athlete, filterEventId)); 
         }
@@ -249,6 +246,7 @@ async function fetchAthletes(filterEventId = null) {
     } catch (error) {
         console.error("Errore nel recupero degli atleti:", error.message);
         
+        // ⭐ CONTROLLO NULL AGGIUNTO per evitare l'errore se l'elemento non esiste
         const societyNameDisplay = document.getElementById('societyNameDisplay');
         if (societyNameDisplay) {
             societyNameDisplay.textContent = "Errore di caricamento dati.";
@@ -283,6 +281,7 @@ async function fetchSocietyNameOnLoad() {
                 currentEventDisplay.textContent = eventId ? `ID: ${eventId}` : 'Nessun Evento Selezionato';
             }
             
+            // ⭐ CONTROLLO AGGIUNTO per fetchAthletes
             if (document.getElementById('athleteList')) { 
                 if (typeof fetchAthletes === 'function') {
                      fetchAthletes(eventId);
@@ -317,7 +316,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const passwordConfirm = document.getElementById('passwordConfirm').value; 
             const Phone = document.getElementById('Phone').value;
 
-            // VALIDAZIONE CONFERMA
             if (email !== emailConfirm) {
                 alert('Errore: L\'email e la conferma email non corrispondono.');
                 return;
@@ -343,12 +341,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // ⭐ NUOVO LISTENER PER REGISTRAZIONE SQUADRA
+    // ⭐ NUOVO LISTENER PER TOGGLE FORM SQUADRA
+    const toggleButton = document.getElementById('toggleTeamForm');
+    const teamFormContainer = document.getElementById('teamFormContainer');
+    
+    if (toggleButton && teamFormContainer) {
+        toggleButton.addEventListener('click', () => {
+            const isHidden = teamFormContainer.style.display === 'none';
+            teamFormContainer.style.display = isHidden ? 'block' : 'none';
+            toggleButton.textContent = isHidden ? 
+                'Nascondi Modulo Iscrizione Squadra' : 
+                'Mostra Modulo Iscrizione Squadra';
+        });
+    }
+    
+    // LISTENER PER REGISTRAZIONE SQUADRA
     const teamForm = document.getElementById('teamForm');
     if (teamForm) {
         teamForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            // Controlla se la funzione addTeam è stata caricata da script2.js
             if (typeof addTeam === 'function') {
                 await addTeam(); 
             } else {
