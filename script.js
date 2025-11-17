@@ -174,7 +174,7 @@ async function removeAthlete(athleteId, rowElement) {
 
 
 //================================================================================
-// FUNZIONE PRINCIPALE: FETCH ATLETI (Corretta per il controllo null)
+// FUNZIONE PRINCIPALE: FETCH ATLETI 
 //================================================================================
 
 async function fetchAthletes(filterEventId = null) {
@@ -227,7 +227,7 @@ async function fetchAthletes(filterEventId = null) {
         if (error) throw error;
 
         const athleteList = document.getElementById('athleteList');
-        if (athleteList) { // ⭐ CONTROLLO NULL AGGIUNTO
+        if (athleteList) { // CONTROLLO NULL
             athleteList.innerHTML = '';
             athletesData.forEach(athlete => addAthleteToTable(athlete, filterEventId)); 
         }
@@ -246,7 +246,7 @@ async function fetchAthletes(filterEventId = null) {
     } catch (error) {
         console.error("Errore nel recupero degli atleti:", error.message);
         
-        // ⭐ CONTROLLO NULL AGGIUNTO per evitare l'errore se l'elemento non esiste
+        // ⭐ CONTROLLO NULL RAFFORZATO (per l'errore a riga 247)
         const societyNameDisplay = document.getElementById('societyNameDisplay');
         if (societyNameDisplay) {
             societyNameDisplay.textContent = "Errore di caricamento dati.";
@@ -269,19 +269,20 @@ async function fetchSocietyNameOnLoad() {
             console.error("Errore nel recupero del nome della società:", societyError.message);
         } else if (societyData) {
             const societyNameDisplay = document.getElementById('societyNameDisplay');
-            if (societyNameDisplay) { 
+            const currentEventDisplay = document.getElementById('currentEventDisplay'); // Check aggiuntivo
+            
+            if (societyNameDisplay) { // Check 1
                 societyNameDisplay.textContent = societyData.nome;
             }
             
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event_id');
             
-            const currentEventDisplay = document.getElementById('currentEventDisplay');
-            if (currentEventDisplay) {
+            if (currentEventDisplay) { // Check 2
                 currentEventDisplay.textContent = eventId ? `ID: ${eventId}` : 'Nessun Evento Selezionato';
             }
             
-            // ⭐ CONTROLLO AGGIUNTO per fetchAthletes
+            // Call fetchAthletes only if the main table exists (i.e. we are on index.html)
             if (document.getElementById('athleteList')) { 
                 if (typeof fetchAthletes === 'function') {
                      fetchAthletes(eventId);
@@ -341,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // ⭐ NUOVO LISTENER PER TOGGLE FORM SQUADRA
+    // LISTENER PER TOGGLE FORM SQUADRA
     const toggleButton = document.getElementById('toggleTeamForm');
     const teamFormContainer = document.getElementById('teamFormContainer');
     
