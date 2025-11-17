@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,11 +24,6 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-right: 20px;
-        }
-
-        /* Stili aggiuntivi se necessario */
-        .stats-container {
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -75,11 +69,11 @@
                     </tr>
                     <tr>
                         <td>Kata Squadre</td>
-                        <td id="KataSquadreAthleteCountDisplay">Caricamento...</td>
+                        <td id="Kata_SquadreAthleteCountDisplay">Caricamento...</td>
                     </tr>
                     <tr>
                         <td>Kumite Squadre</td>
-                        <td id="KumiteSquadreAthleteCountDisplay">Caricamento...</td>
+                        <td id="Kumite_SquadreAthleteCountDisplay">Caricamento...</td>
                     </tr>
                 </tbody>
             </table>
@@ -138,58 +132,64 @@
         </form>
         <hr>
 
-        <h2>Iscrizione Squadra</h2>
-        <form id="teamForm">
-            <div class="form-row">
-                <div class="form-group col-md-6">
-                    <label for="teamName">Nome Squadra (es. "Società X Team A")</label>
-                    <input type="text" class="form-control" id="teamName" required>
+        <button id="toggleTeamForm" class="btn btn-info mb-3">
+            Mostra Modulo Iscrizione Squadra
+        </button>
+        
+        <div id="teamFormContainer" style="display:none;">
+            <h2>Iscrizione Squadra</h2>
+            <form id="teamForm">
+                 <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="teamName">Nome Squadra (es. "Società X Team A")</label>
+                        <input type="text" class="form-control" id="teamName" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="teamSpecialty">Specialità Squadra</label>
+                        <select id="teamSpecialty" class="form-control" required>
+                            <option value="">Seleziona...</option>
+                            <option value="Kata_Squadre">Kata Squadre</option>
+                            <option value="Kumite_Squadre">Kumite Squadre</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group col-md-6">
-                    <label for="teamSpecialty">Specialità Squadra</label>
-                    <select id="teamSpecialty" class="form-control" required>
-                        <option value="">Seleziona...</option>
-                        <option value="Kata Squadre">Kata Squadre</option>
-                        <option value="Kumite Squadre">Kumite Squadre</option>
-                    </select>
+                
+                <div class="form-group">
+                    <label for="teamMembers">Membri della Squadra (max 5, min 3 - separati da virgola)</label>
+                    <textarea class="form-control" id="teamMembers" rows="3" placeholder="Nome Cognome Atleta 1, Nome Cognome Atleta 2, Nome Cognome Atleta 3, ... (Max 5)" required></textarea>
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="teamMembers">Membri della Squadra (max 5, min 3 - separati da virgola)</label>
-                <textarea class="form-control" id="teamMembers" rows="3" placeholder="Nome Cognome Atleta 1, Nome Cognome Atleta 2, Nome Cognome Atleta 3, ... (Max 5)" required></textarea>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group col-md-4">
-                    <label for="teamClasse">Classe (Categoria)</label>
-                    <select id="teamClasse" class="form-control" required>
-                        <option value="">Seleziona...</option>
-                        <option value="Esordienti">Esordienti</option>
-                        <option value="Cadetti">Cadetti</option>
-                        <option value="Juniores">Juniores</option>
-                        <option value="Seniores">Seniores</option>
-                    </select>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="teamClasse">Classe (Categoria)</label>
+                        <select id="teamClasse" class="form-control" required>
+                            <option value="">Seleziona...</option>
+                            <option value="Esordienti">Esordienti</option>
+                            <option value="Cadetti">Cadetti</option>
+                            <option value="Juniores">Juniores</option>
+                            <option value="Seniores">Seniores</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="teamBelt">Cintura Squadra</label>
+                        <select id="teamBelt" class="form-control" required>
+                            <option value="Marrone-Nera">Marrone/Nera</option>
+                            <option value="Blu-Marrone">Blu/Marrone</option>
+                        </select>
+                    </div>
+                     <div class="form-group col-md-4">
+                        <label for="teamGender">Genere</label>
+                        <select id="teamGender" class="form-control" required>
+                            <option value="Maschio">Maschile</option>
+                            <option value="Femmina">Femminile</option>
+                            <option value="Misto">Misto</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group col-md-4">
-                    <label for="teamBelt">Cintura Squadra</label>
-                    <select id="teamBelt" class="form-control" required>
-                        <option value="Marrone-Nera">Marrone/Nera</option>
-                        <option value="Blu-Marrone">Blu/Marrone</option>
-                    </select>
-                </div>
-                 <div class="form-group col-md-4">
-                    <label for="teamGender">Genere</label>
-                    <select id="teamGender" class="form-control" required>
-                        <option value="Maschio">Maschile</option>
-                        <option value="Femmina">Femminile</option>
-                        <option value="Misto">Misto</option>
-                    </select>
-                </div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Iscrivi Squadra</button>
-        </form>
+                
+                <button type="submit" class="btn btn-primary">Iscrivi Squadra</button>
+            </form>
+        </div>
         <hr>
         
 
@@ -204,7 +204,8 @@
                     <th>Cintura</th>
                     <th>Classe</th>
                     <th>Specialità</th>
-                    <th>Peso/Membri</th> <th>ID Società</th>
+                    <th>Peso/Membri</th> 
+                    <th>ID Società</th>
                     <th>Stato Iscrizione</th>
                     <th>Azioni</th>
                 </tr>
