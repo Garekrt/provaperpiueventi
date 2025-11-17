@@ -14,16 +14,26 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
 
     // 1. Cerca il limite specifico per l'evento nel DB
     if (eventId) {
-        const { data } = await supabase
-            .from('limiti_evento')
-            .select('limite_max')
-            .eq('evento_id', eventId)
-            // La key ora è Kumite, Kata, KIDS, Kata_Squadre, Kumite_Squadre
-            .eq('specialty', key) 
-            .single();
-        
-        if (data && data.limite_max !== undefined) {
-            return data.limite_max;
+        // ⭐ Fix per l'errore 406: uso di try/catch e .in() per rendere la query PostgREST più robusta
+        try {
+            const { data, error } = await supabase
+                .from('limiti_evento')
+                .select('limite_max')
+                .eq('evento_id', eventId)
+                .in('specialty', [key]) // ⭐ CAMBIATO da .eq(key) a .in([key])
+                .single();
+            
+            // PGRST103 = "No row found", che è atteso se il limite non è stato impostato
+            if (error && error.code !== 'PGRST103') { 
+                 console.warn(`[Limite non impostato]: Fallback a limite di default per ${key}. (Dettaglio errore PostgREST: ${error.message})`);
+            }
+            
+            if (data && data.limite_max !== undefined) {
+                return data.limite_max;
+            }
+        } catch (e) {
+             console.error(`[Errore critico in Limiti]: Impossibile comunicare con Supabase per ${key}.`, e.message);
+             // Proseguiamo con i limiti di default
         }
     } 
 
@@ -46,7 +56,6 @@ async function getSpecialtyCount(specialty, eventId = null) {
     if (!eventId) return 0;
     
     const isKids = specialty === "Percorso-Palloncino" || specialty === "Percorso-Kata" || specialty === "Palloncino";
-    // ⭐ USO DEL TRATTINO BASSO
     const isTeamSpecialty = specialty === "Kata_Squadre" || specialty === "Kumite_Squadre"; 
 
     let specialtyList = [];
@@ -58,6 +67,7 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
     let query = supabase
         .from('iscrizioni_eventi')
+        // Usa !inner per assicurarsi che ci sia un record atleta valido e per poter filtrare su atleti.specialty e atleti.is_team
         .select(`atleta_id, atleti!inner(specialty, is_team)`, { count: 'exact', head: true }) 
         .eq('evento_id', eventId)
         .in('atleti.specialty', specialtyList);
@@ -81,26 +91,22 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
 // Funzione per aggiornare i contatori di tutte le specialità
 async function updateAllCounters(eventId = null) {
-    // ⭐ SPECIALITÀ AGGIORNATE CON TRATTINO BASSO
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"]; 
     
     const statsContainer = document.querySelector('.stats-container');
     const athleteForm = document.getElementById('athleteForm');
-    const teamForm = document.getElementById('teamFormContainer'); // Usa il contenitore
 
     if (!eventId) {
+        // Se non c'è evento, nasconde i moduli (se esistono)
         if (statsContainer) statsContainer.style.display = 'none';
         if (athleteForm) athleteForm.style.display = 'none';
-        if (teamForm) teamForm.style.display = 'none'; 
         return;
     }
+    // Altrimenti, li mostra (se esistono)
     if (statsContainer) statsContainer.style.display = 'block';
     if (athleteForm) athleteForm.style.display = 'block';
-    // Il teamForm non viene mostrato automaticamente, ma il suo form parent sì
-    
 
     for (const specialty of specialties) {
-        // Usa il nome con _ per l'ID HTML
         const countKey = specialty; 
         const specialtyToCount = (specialty === 'KIDS') ? 'Percorso-Palloncino' : specialty;
         
@@ -109,8 +115,7 @@ async function updateAllCounters(eventId = null) {
         
         const displayElement = document.getElementById(`${countKey}AthleteCountDisplay`);
         
-        if (displayElement) {
-            // Sostituisce '_' con lo spazio per la visualizzazione all'utente
+        if (displayElement) { // Controlli di null-check sempre attivi
             const displayName = specialty.replace(/_/g, ' '); 
             
             displayElement.textContent = `${count} / ${maxLimit}`;
@@ -130,12 +135,11 @@ async function updateAllCounters(eventId = null) {
 
 
 //================================================================================
-// NUOVA FUNZIONE: addTeam (MODIFICATO: USA _ NEI VALORI INVIATI)
+// FUNZIONE: addTeam (SQUADRA)
 //================================================================================
 
 async function addTeam() {
     const teamName = document.getElementById('teamName').value;
-    // ORA teamSpecialty sarà 'Kata_Squadre' o 'Kumite_Squadre'
     const teamSpecialty = document.getElementById('teamSpecialty').value; 
     const teamMembersText = document.getElementById('teamMembers').value;
     const teamClasse = document.getElementById('teamClasse').value;
@@ -193,7 +197,7 @@ async function addTeam() {
             birthdate: '2000-01-01', 
             weight_category: null, 
             classe: teamClasse,
-            specialty: teamSpecialty, // ⭐ USA SPECIALTY CON TRATTINO BASSO
+            specialty: teamSpecialty, // USA SPECIALTY CON TRATTINO BASSO
             belt: teamBelt,
             society_id: societyId,
             is_team: true,             
@@ -243,6 +247,8 @@ function calculateAthleteAttributes(birthDate, gender) {
     const classeSelect = document.getElementById('classe');
     const specialtySelect = document.getElementById('specialty');
     const beltSelect = document.getElementById('belt');
+    
+    if (!classeSelect || !specialtySelect || !beltSelect) return;
 
     let currentClasse = "";
     
@@ -553,7 +559,6 @@ async function showAdminLimitsSection(eventId) {
 }
 
 async function loadEventLimits(eventId) {
-    // ⭐ AGGIORNATO CON TRATTINO BASSO
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"]; 
     const limitContainer = document.getElementById('limitInputs');
     if (!limitContainer) return;
@@ -585,7 +590,6 @@ async function loadEventLimits(eventId) {
 
 async function saveEventLimits() {
     const eventId = document.getElementById('limitsEventId').textContent;
-    // ⭐ AGGIORNATO CON TRATTINO BASSO
     const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata_Squadre", "Kumite_Squadre"];
     
     if (!eventId) {
