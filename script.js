@@ -15,6 +15,7 @@ async function signUp(email, password, nomeSocieta, Phone) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
 
+        // Questo inserimento ora dovrebbe funzionare dopo aver rimosso il vincolo 'societa_csf_key' nel DB
         const { error: societaError } = await supabase.from('societa').insert([{ nome: nomeSocieta, email: email, Phone:Phone, user_id: data.user.id }]);
         if (societaError) throw societaError;
 
@@ -31,7 +32,7 @@ async function signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
-        window.location.href = '/event_selector.html'; 
+        window.location.href = '/event_selector.html'; // O index.html se è la tua pagina principale
     } catch (error) {
         console.error('Errore:', error.message);
         alert('Errore di accesso: ' + error.message);
@@ -49,11 +50,9 @@ async function signOut() {
     }
 }
 
-// ⭐ NUOVA FUNZIONE RECUPERO PASSWORD
 async function forgotPassword(email) {
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            // IL LINK DEVE PUNTARE ALLA PAGINA update-password.html
             redirectTo: window.location.origin + '/update-password.html', 
         });
 
@@ -94,7 +93,7 @@ async function getAdminSocietyId() {
 }
 
 //================================================================================
-// FUNZIONE PER POPOLARE LA TABELLA ATLETI
+// FUNZIONE PER POPOLARE LA TABELLA ATLETI (AGGIORNATA PER LE SQUADRE)
 //================================================================================
 function addAthleteToTable(athlete, eventId = null) { 
     const athleteList = document.getElementById('athleteList');
@@ -102,14 +101,28 @@ function addAthleteToTable(athlete, eventId = null) {
 
     const row = athleteList.insertRow();
     
-    row.insertCell().textContent = athlete.first_name;
-    row.insertCell().textContent = athlete.last_name;
-    row.insertCell().textContent = athlete.gender;
-    row.insertCell().textContent = athlete.birthdate;
-    row.insertCell().textContent = athlete.belt;
-    row.insertCell().textContent = athlete.classe;
-    row.insertCell().textContent = athlete.specialty;
-    row.insertCell().textContent = athlete.weight_category || 'N/D';
+    // ⭐ GESTIONE SQUADRE
+    if (athlete.is_team) {
+        row.insertCell().textContent = athlete.first_name; // Nome Squadra
+        row.insertCell().textContent = 'SQUADRA'; // Etichetta fissa
+        row.insertCell().textContent = athlete.gender;
+        row.insertCell().textContent = 'N/A'; // Data di nascita non applicabile
+        row.insertCell().textContent = athlete.belt;
+        row.insertCell().textContent = athlete.classe;
+        row.insertCell().textContent = athlete.specialty; // Specialità Squadre
+        row.insertCell().textContent = athlete.team_members || 'Membri non listati'; // NOMI MEMBRI
+    } else {
+        // Logica esistente per gli atleti individuali
+        row.insertCell().textContent = athlete.first_name;
+        row.insertCell().textContent = athlete.last_name;
+        row.insertCell().textContent = athlete.gender;
+        row.insertCell().textContent = athlete.birthdate;
+        row.insertCell().textContent = athlete.belt;
+        row.insertCell().textContent = athlete.classe;
+        row.insertCell().textContent = athlete.specialty;
+        row.insertCell().textContent = athlete.weight_category || 'N/D';
+    }
+    
     row.insertCell().textContent = athlete.society_id;
 
     const statusCell = row.insertCell();
@@ -134,9 +147,9 @@ function addAthleteToTable(athlete, eventId = null) {
     actionsCell.appendChild(removeButton);
 }
 
-// Funzione per la rimozione di un atleta 
+// Funzione per la rimozione di un atleta/squadra
 async function removeAthlete(athleteId, rowElement) {
-    if (!confirm("Sei sicuro di voler rimuovere questo atleta? Verrà rimosso da tutti gli eventi.")) {
+    if (!confirm("Sei sicuro di voler rimuovere questo atleta/squadra? Verrà rimosso da tutti gli eventi.")) {
         return;
     }
 
@@ -147,14 +160,12 @@ async function removeAthlete(athleteId, rowElement) {
 
     if (error) {
         console.error('Errore durante la rimozione:', error.message);
-        alert('Errore durante la rimozione dell\'atleta.');
+        alert('Errore durante la rimozione dell\'atleta/squadra.');
     } else {
         rowElement.remove(); 
         
-        // Ricarica la lista per aggiornare i contatori (passando l'ID evento)
         const urlParams = new URLSearchParams(window.location.search);
         const eventId = urlParams.get('event_id');
-        // Chiama la funzione di fetchAthletes che a sua volta chiama updateAllCounters (in script2.js)
         if (typeof fetchAthletes === 'function') {
             fetchAthletes(eventId); 
         }
@@ -165,11 +176,8 @@ async function removeAthlete(athleteId, rowElement) {
 //================================================================================
 // FUNZIONE PRINCIPALE: FETCH ATLETI (Chiama le funzioni di script2.js)
 //================================================================================
+// (Questa funzione rimane come nelle versioni precedenti)
 
-/**
- * Recupera gli atleti della società loggata e aggiorna l'interfaccia.
- * @param {string|null} filterEventId - ID dell'evento da usare come filtro.
- */
 async function fetchAthletes(filterEventId = null) {
     try {
         const user = await supabase.auth.getUser();
@@ -189,6 +197,7 @@ async function fetchAthletes(filterEventId = null) {
 
         // LOGICA DI FILTRO 
         if (filterEventId) {
+            // Recupera sia gli atleti individuali che le squadre iscritte all'evento
             const { data: subscriptionData, error: subError } = await supabase
                 .from('iscrizioni_eventi')
                 .select(`
@@ -208,7 +217,7 @@ async function fetchAthletes(filterEventId = null) {
                 }));
 
         } else {
-            // Nessun filtro: recupera TUTTI gli atleti della società
+            // Nessun filtro: recupera TUTTI i record (atleti e squadre) della società
             const { data: allAthletes, error: fetchError } = await supabase
                 .from('atleti')
                 .select('*')
@@ -271,11 +280,10 @@ async function fetchSocietyNameOnLoad() {
             
             const currentEventDisplay = document.getElementById('currentEventDisplay');
             if (currentEventDisplay) {
-                currentEventDisplay.textContent = eventId ? eventId : 'Nessun Evento Selezionato';
+                currentEventDisplay.textContent = eventId ? `ID: ${eventId}` : 'Nessun Evento Selezionato';
             }
             
             if (document.getElementById('athleteList')) { 
-                // Controlla se fetchAthletes è definita (viene da script.js) prima di chiamarla
                 if (typeof fetchAthletes === 'function') {
                      fetchAthletes(eventId);
                 }
@@ -285,7 +293,7 @@ async function fetchSocietyNameOnLoad() {
 }
 
 
-// Inizializza l'ascoltatore per il loginForm e l'esecuzione al caricamento
+// Inizializza i listener per i form
 document.addEventListener('DOMContentLoaded', async () => { 
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -302,7 +310,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         registrazioneForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // ⭐ RISOLUZIONE ERRORE: Questi campi esistono solo qui
             const nomeSocieta = document.getElementById('nomeSocieta').value;
             const email = document.getElementById('email').value;
             const emailConfirm = document.getElementById('emailConfirm').value; 
@@ -324,7 +331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ⭐ LISTENER PER RECUPERO PASSWORD
+    // LISTENER PER RECUPERO PASSWORD
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     if (forgotPasswordLink) {
         forgotPasswordLink.addEventListener('click', (e) => {
@@ -332,6 +339,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const email = prompt('Inserisci l\'email associata al tuo account per recuperare la password:');
             if (email) {
                 forgotPassword(email);
+            }
+        });
+    }
+    
+    // ⭐ NUOVO LISTENER PER REGISTRAZIONE SQUADRA
+    const teamForm = document.getElementById('teamForm');
+    if (teamForm) {
+        teamForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // Controlla se la funzione addTeam è stata caricata da script2.js
+            if (typeof addTeam === 'function') {
+                await addTeam(); 
+            } else {
+                alert('Errore: Funzione di aggiunta squadra non disponibile (controlla script2.js).');
             }
         });
     }
