@@ -2,14 +2,13 @@
 // Vengono usati ADMIN_USER_ID, fetchAthletes, isCurrentUserAdmin, getAdminSocietyId da script.js
 
 //================================================================================
-// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO (FIX APPLICATO QUI)
+// 1. GESTIONE LIMITI E CONTEGGIO PER EVENTO (MODIFICATO PER ISOLARE LE SQUADRE)
 //================================================================================
 
 /**
- * Funzione per ottenere il limite massimo di atleti per specialità e evento.
+ * Funzione per ottenere il limite massimo di atleti/squadre per specialità e evento.
  */
 async function getMaxAthletesForSpecialty(specialty, eventId = null) {
-    // SPECIALITÀ UNIFICATE KIDS
     const isKidsSpecialty = specialty === "Percorso-Palloncino" || specialty === "Percorso-Kata" || specialty === "Palloncino";
     const key = isKidsSpecialty ? 'KIDS' : specialty;
 
@@ -28,6 +27,11 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
     } 
 
     // 2. Limiti Predefiniti
+    
+    // ⭐ NUOVO: Limite di default per le Squadre (ALTO)
+    if (specialty === "Kata Squadre" || specialty === "Kumite Squadre") return 50; 
+    
+    // Limiti per individuali
     if (key === "Kumite") return 6;
     if (key === "Kata") return 5;
     if (key === "ParaKarate") return 5;
@@ -39,24 +43,31 @@ async function getMaxAthletesForSpecialty(specialty, eventId = null) {
 // Funzione per ottenere il conteggio totale degli atleti per specialità e EVENTO
 async function getSpecialtyCount(specialty, eventId = null) {
     if (!eventId) return 0;
-
-    const isKids = specialty === "Percorso-Palloncino" || specialty === "Percorso-Kata" || specialty === "Palloncino";
     
+    const isKids = specialty === "Percorso-Palloncino" || specialty === "Percorso-Kata" || specialty === "Palloncino";
+    const isTeamSpecialty = specialty === "Kata Squadre" || specialty === "Kumite Squadre"; // ⭐ NUOVO CHECK
+
+    let specialtyList = [];
+    if (isKids) {
+         specialtyList = ["Percorso-Palloncino", "Percorso-Kata", "Palloncino"];
+    } else {
+        specialtyList = [specialty];
+    }
+
     let query = supabase
         .from('iscrizioni_eventi')
-        // ⭐ FIX: Usiamo 'atleti!inner(specialty)' per forzare un INNER JOIN 
-        // che garantisce che il filtro sulla 'specialty' venga applicato prima del conteggio.
-        .select(`atleta_id, atleti!inner(specialty)`, { count: 'exact', head: true }) 
-        .eq('evento_id', eventId);
+        // Usiamo 'atleti!inner(specialty, is_team)' per la join
+        .select(`atleta_id, atleti!inner(specialty, is_team)`, { count: 'exact', head: true }) 
+        .eq('evento_id', eventId)
+        .in('atleti.specialty', specialtyList);
     
-    // Filtriamo la specialità corretta nella tabella atleti tramite la join
-    if (isKids) {
-         const specialtyList = ["Percorso-Palloncino", "Percorso-Kata", "Palloncino"];
-         query = query.in('atleti.specialty', specialtyList); 
-            
+    // ⭐ FILTRO CRUCIALE: Controlla se è squadra o individuale
+    if (isTeamSpecialty) {
+        // Se è una specialità squadra, conta SOLO i record con is_team = TRUE
+        query = query.eq('atleti.is_team', true);
     } else {
-        // Conteggio per la singola specialità (Kumite, Kata, ParaKarate)
-        query = query.eq('atleti.specialty', specialty);
+        // Se è una specialità individuale, conta SOLO i record con is_team = FALSE
+        query = query.eq('atleti.is_team', false);
     }
     
     const { count, error } = await query;
@@ -71,22 +82,26 @@ async function getSpecialtyCount(specialty, eventId = null) {
 
 // Funzione per aggiornare i contatori di tutte le specialità
 async function updateAllCounters(eventId = null) {
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"]; 
+    // ⭐ AGGIUNTI "Kata Squadre" e "Kumite Squadre"
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"]; 
     
     const statsContainer = document.querySelector('.stats-container');
     const athleteForm = document.getElementById('athleteForm');
+    const teamForm = document.getElementById('teamForm'); 
 
     if (!eventId) {
         if (statsContainer) statsContainer.style.display = 'none';
         if (athleteForm) athleteForm.style.display = 'none';
+        if (teamForm) teamForm.style.display = 'none'; 
         return;
     }
     if (statsContainer) statsContainer.style.display = 'block';
     if (athleteForm) athleteForm.style.display = 'block';
+    if (teamForm) teamForm.style.display = 'block'; 
 
 
     for (const specialty of specialties) {
-        const countKey = specialty; 
+        const countKey = specialty.replace(/\s/g, ''); 
         const specialtyToCount = (specialty === 'KIDS') ? 'Percorso-Palloncino' : specialty;
         
         const maxLimit = await getMaxAthletesForSpecialty(specialtyToCount, eventId);
@@ -95,6 +110,8 @@ async function updateAllCounters(eventId = null) {
         const displayElement = document.getElementById(`${countKey}AthleteCountDisplay`);
         
         if (displayElement) {
+            const displayName = specialty.includes('Squadre') ? specialty : specialty;
+            
             displayElement.textContent = `${count} / ${maxLimit}`;
             
             if (count >= maxLimit) {
@@ -105,14 +122,118 @@ async function updateAllCounters(eventId = null) {
         }
     }
     
-    // Carica la sezione Admin Limiti (se l'utente è Admin)
-    await showAdminLimitsSection(eventId); 
+    if (typeof showAdminLimitsSection === 'function') {
+        await showAdminLimitsSection(eventId); 
+    }
 }
 
 
 //================================================================================
-// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE (Unificata - Nessuna Modifica)
+// NUOVA FUNZIONE: addTeam
 //================================================================================
+
+async function addTeam() {
+    const teamName = document.getElementById('teamName').value;
+    const teamSpecialty = document.getElementById('teamSpecialty').value;
+    const teamMembersText = document.getElementById('teamMembers').value;
+    const teamClasse = document.getElementById('teamClasse').value;
+    const teamBelt = document.getElementById('teamBelt').value;
+    const teamGender = document.getElementById('teamGender').value;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('event_id');
+    
+    if (!eventId) {
+        alert("Impossibile aggiungere squadre: devi prima selezionare un evento.");
+        return;
+    }
+
+    const membersArray = teamMembersText.split(',').map(name => name.trim()).filter(name => name);
+    if (membersArray.length < 3 || membersArray.length > 5) {
+        alert("Una squadra deve essere composta da un minimo di 3 a un massimo di 5 atleti.");
+        return;
+    }
+    
+    const user = await supabase.auth.getUser();
+    if (!user.data?.user?.id) {
+        alert("Utente non autenticato.");
+        return;
+    }
+
+    const { data: society, error: societyError } = await supabase
+        .from('societa')
+        .select('id')
+        .eq('user_id', user.data.user.id)
+        .single();
+
+    if (societyError || !society) {
+        alert('Impossibile trovare la Società associata all\'utente.');
+        return;
+    }
+    const societyId = society.id;
+
+    // VERIFICA LIMITI SQUADRE
+    const currentTeamCount = await getSpecialtyCount(teamSpecialty, eventId);
+    const maxLimit = await getMaxAthletesForSpecialty(teamSpecialty, eventId);
+
+    if (currentTeamCount >= maxLimit) {
+        alert(`Limite massimo di ${maxLimit} squadre per la specialità ${teamSpecialty} raggiunto.`);
+        return;
+    }
+
+    // 1. Inserimento Squadra (come record speciale in atleti)
+    const { data: newTeam, error } = await supabase
+        .from('atleti') 
+        .insert([{
+            first_name: teamName, 
+            last_name: 'Squadra', 
+            gender: teamGender,
+            // Dati fittizi, non rilevanti per la squadra:
+            birthdate: '2000-01-01', 
+            weight_category: null, 
+            classe: teamClasse,
+            specialty: teamSpecialty, 
+            belt: teamBelt,
+            society_id: societyId,
+            is_team: true,             // ⭐ FLAG FONDAMENTALE
+            team_members: teamMembersText 
+        }])
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Errore nell\'aggiunta della squadra:', error.message);
+        alert('Errore nell\'aggiunta della squadra.');
+        return;
+    }
+
+    // 2. Iscrizione automatica all'evento
+    const { error: subError } = await supabase
+        .from('iscrizioni_eventi')
+        .insert([{
+            atleta_id: newTeam.id, 
+            evento_id: eventId,
+            stato_iscrizione: 'Iscritto' 
+        }]);
+
+    if (subError) {
+        console.error('Errore nell\'iscrizione automatica della squadra all\'evento:', subError.message);
+        alert('Squadra aggiunta, ma l\'iscrizione automatica all\'evento è fallita!');
+    } else {
+        alert('Squadra aggiunta e iscritta all\'evento con successo!');
+    }
+
+    if (typeof fetchAthletes === 'function') {
+        fetchAthletes(eventId); 
+    }
+    document.getElementById('teamForm').reset();
+}
+
+
+//================================================================================
+// 2. LOGICA FORM: CLASSE, SPECIALITÀ, PESO E CINTURE (Nessuna modifica strutturale)
+//================================================================================
+// ... (Mantieni le funzioni calculateAthleteAttributes, updateWeightCategoryOptions, addAthlete) ...
 
 function calculateAthleteAttributes(birthDate, gender) {
     const today = new Date();
@@ -206,6 +327,8 @@ function calculateAthleteAttributes(birthDate, gender) {
 
 function updateWeightCategoryOptions(classe, gender, specialty) {
     const weightCategoryField = document.getElementById("weightCategory");
+    if (!weightCategoryField) return;
+
     weightCategoryField.innerHTML = "";
 
     const isMale = gender === "M" || gender === "Maschio";
@@ -337,7 +460,7 @@ async function addAthlete() {
     }
     const societyId = society.id;
 
-    // VERIFICA LIMITI
+    // VERIFICA LIMITI (usa getSpecialtyCount che ora filtra per is_team=FALSE)
     const currentSpecialtyCount = await getSpecialtyCount(specialty, eventId);
     const maxLimit = await getMaxAthletesForSpecialty(specialty, eventId);
     
@@ -346,7 +469,7 @@ async function addAthlete() {
         return;
     }
 
-    // 1. Inserimento Atleta
+    // 1. Inserimento Atleta (is_team sarà FALSE di default)
     const { data: newAthlete, error } = await supabase
         .from('atleti')
         .insert([{
@@ -358,7 +481,8 @@ async function addAthlete() {
             specialty: specialty,
             weight_category: weightCategory || null,
             belt: belt,
-            society_id: societyId
+            society_id: societyId,
+            is_team: false // Esplicitamente impostato come individuo
         }])
         .select()
         .single();
@@ -385,24 +509,29 @@ async function addAthlete() {
         alert('Atleta aggiunto e iscritto all\'evento con successo!');
     }
 
-    fetchAthletes(eventId); // Ricarica la lista degli iscritti (funzione in script.js)
+    if (typeof fetchAthletes === 'function') {
+        fetchAthletes(eventId); 
+    }
     document.getElementById('athleteForm').reset();
 }
 
 
 //================================================================================
-// 3. GESTIONE EVENTI E ADMIN (Nessuna Modifica)
+// 3. GESTIONE EVENTI E ADMIN (Nessuna Modifica strutturale)
 //================================================================================
 
 async function showAdminSection() {
     const adminSection = document.getElementById('adminEventCreation');
-    if (adminSection) {
+    if (adminSection && typeof isCurrentUserAdmin === 'function') {
         if (await isCurrentUserAdmin()) {
             adminSection.style.display = 'block';
-            const adminSocietyId = await getAdminSocietyId(); 
-            const adminSocietyIdDisplay = document.getElementById('adminSocietyIdDisplay');
-            if (adminSocietyIdDisplay && adminSocietyId) {
-                adminSocietyIdDisplay.textContent = adminSocietyId;
+            
+            if (typeof getAdminSocietyId === 'function') {
+                const adminSocietyId = await getAdminSocietyId(); 
+                const adminSocietyIdDisplay = document.getElementById('adminSocietyIdDisplay');
+                if (adminSocietyIdDisplay && adminSocietyId) {
+                    adminSocietyIdDisplay.textContent = adminSocietyId;
+                }
             }
         } else {
             adminSection.style.display = 'none';
@@ -414,7 +543,7 @@ async function showAdminLimitsSection(eventId) {
     const adminLimitsSection = document.getElementById('adminLimitsConfig');
     if (!adminLimitsSection) return;
     
-    if (await isCurrentUserAdmin() && eventId) {
+    if (typeof isCurrentUserAdmin === 'function' && await isCurrentUserAdmin() && eventId) {
         adminLimitsSection.style.display = 'block';
         document.getElementById('limitsEventId').textContent = eventId;
         await loadEventLimits(eventId);
@@ -424,8 +553,9 @@ async function showAdminLimitsSection(eventId) {
 }
 
 async function loadEventLimits(eventId) {
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"];
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"];
     const limitContainer = document.getElementById('limitInputs');
+    if (!limitContainer) return;
     limitContainer.innerHTML = '';
     
     const { data: limits } = await supabase
@@ -454,7 +584,7 @@ async function loadEventLimits(eventId) {
 
 async function saveEventLimits() {
     const eventId = document.getElementById('limitsEventId').textContent;
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"];
+    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS", "Kata Squadre", "Kumite Squadre"];
     
     if (!eventId) {
         alert("Errore: ID evento mancante.");
@@ -481,11 +611,15 @@ async function saveEventLimits() {
 }
 
 async function handleCreateEvent() { 
-    if (!await isCurrentUserAdmin()) {
+    if (typeof isCurrentUserAdmin !== 'function' || !await isCurrentUserAdmin()) {
         alert('Accesso negato.');
         return;
     }
     
+    if (typeof getAdminSocietyId !== 'function') {
+        alert('Funzione admin non disponibile.');
+        return;
+    }
     const adminSocietyId = await getAdminSocietyId();
     if (!adminSocietyId) {
         alert('Impossibile determinare la Società Admin.');
@@ -520,7 +654,9 @@ async function handleCreateEvent() {
     } else {
         alert('Evento creato con successo!');
         document.getElementById("eventForm").reset();
-        await populateEventSelector('eventSelector'); 
+        if (typeof populateEventSelector === 'function') {
+             await populateEventSelector('eventSelector'); 
+        }
     }
 }
 
@@ -561,7 +697,7 @@ async function populateEventSelector(selectorId) {
 
 
 //================================================================================
-// 4. LISTENERS (Nessuna Modifica)
+// 4. LISTENERS (Nessuna Modifica strutturale)
 //================================================================================
 
 document.addEventListener('DOMContentLoaded', async () => { 
@@ -604,5 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    await showAdminSection(); 
+    if (typeof showAdminSection === 'function') {
+        await showAdminSection(); 
+    }
 });
