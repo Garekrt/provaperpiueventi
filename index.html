@@ -221,35 +221,42 @@
             </div>
 
     </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="script.js"></script>
-    
     <script src="script2.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Verifica se l'utente è loggato
-            const user = await checkAuth();
-            if (!user) return; // checkAuth reindirizza già a login.html
+        // Inizializzazione sicura
+        async function startApp() {
+            try {
+                // Aspettiamo che le funzioni siano caricate globalmente
+                if (typeof window.checkAuth !== 'function') {
+                    console.error("Errore: script.js non è stato caricato correttamente.");
+                    return;
+                }
 
-            // Carica i dati della società
-            await fetchSocietyNameOnLoad();
+                const user = await window.checkAuth();
+                if (!user) return;
 
-            // Gestione parametri URL per visualizzazione eventi
-            const urlParams = new URLSearchParams(window.location.search);
-            const eventId = urlParams.get('event_id');
-            
-            if (typeof fetchAthletes === 'function') {
-                await fetchAthletes(eventId);
+                await window.fetchSocietyNameOnLoad();
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const eventId = urlParams.get('event_id');
+
+                // Chiamiamo fetchAthletes solo se esiste
+                if (typeof window.fetchAthletes === 'function') {
+                    await window.fetchAthletes(eventId);
+                }
+
+                if (typeof window.showAdminSection === 'function') await window.showAdminSection();
+                if (typeof window.populateEventSelector === 'function') await window.populateEventSelector('eventSelector');
+
+            } catch (err) {
+                console.error("Errore inizializzazione index.html:", err);
             }
+        }
 
-            // Attiva sezioni admin se l'utente è l'admin
-            if (typeof showAdminSection === 'function') {
-                await showAdminSection();
-            }
-        });
+        // Avvio al caricamento del DOM
+        document.addEventListener('DOMContentLoaded', startApp);
     </script>
-</body>
-</html>
