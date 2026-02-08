@@ -20,7 +20,7 @@
 var supabase = window.supabaseClient;
 
 // Variabile Admin
-window.ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1';
+window.ADMIN_USER_ID = '1bd94d5f-af2b-4835-a8ce-f6ccea8f066c';
 
 // --- FUNZIONI DI AUTENTICAZIONE ---
 
