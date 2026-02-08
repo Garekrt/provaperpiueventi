@@ -1,34 +1,33 @@
-
 /**
- * SUPABASE - CONFIGURAZIONE E INIZIALIZZAZIONE
+ * INIZIALIZZAZIONE SUPABASE
+ * Usiamo window.supabaseClient per evitare l'errore "already declared"
  */
 (function() {
     if (typeof window.supabaseClient === 'undefined') {
         const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
         
-        // ⚠️ IMPORTANTE: Sostituisci questa stringa con la tua "anon public key"
-        // La trovi in Supabase -> Settings -> API -> anon public
+        // ⚠️ SOSTITUISCI CON LA TUA "ANON PUBLIC KEY"
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMDgyNDksImV4cCI6MjA3NTY4NDI0OX0.M6z_C3naK-EmcUawCjZa6rOkLc57p3XZ98k67CyXPDQ'; 
 
         // Inizializzazione client v2
+        // La libreria caricata via CDN espone l'oggetto 'supabase' globale
         window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-        console.log("Supabase Client pronto.");
+        console.log("Supabase Client inizializzato correttamente.");
     }
 })();
 
-// Shortcut per l'uso interno
-const supabase = window.supabaseClient;
+// Creiamo un riferimento globale 'supabase' sicuro
+var supabase = window.supabaseClient;
 
-// Costanti Globali
+// Variabile Admin
 window.ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1';
 
-// --- 1. AUTENTICAZIONE ---
+// --- FUNZIONI DI AUTENTICAZIONE ---
 
 window.checkAuth = async function() {
     try {
         const { data, error } = await window.supabaseClient.auth.getUser();
         if (error || !data || !data.user) {
-            // Se non è loggato e non siamo già in una pagina di auth, vai al login
             if (!window.location.href.includes("login.html") && !window.location.href.includes("registrazione.html")) {
                 window.location.href = "login.html";
             }
@@ -43,26 +42,15 @@ window.checkAuth = async function() {
 
 window.signUp = async function(email, password, nomeSocieta, Phone) {
     try {
-        const { data, error } = await window.supabaseClient.auth.signUp({ 
-            email, 
-            password 
-        });
-
+        const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
         if (error) throw error;
-
         if (data.user) {
-            // Inserimento dati società
             const { error: societaError } = await window.supabaseClient.from('societa').insert([
                 { nome: nomeSocieta, email: email, Phone: Phone, user_id: data.user.id }
             ]);
-
             if (societaError) throw societaError;
-
-            // BUG FIX: Supabase logga l'utente subito, noi facciamo logout per 
-            // permettere il reindirizzamento e la verifica email.
             await window.supabaseClient.auth.signOut();
-
-            alert('Registrazione completata! Controlla la tua email per convalidare l\'account prima di accedere.');
+            alert('Registrazione completata! Verifica la mail prima di accedere.');
             window.location.replace('login.html');
         }
     } catch (error) {
@@ -85,10 +73,10 @@ window.signOut = async function() {
     window.location.href = 'login.html';
 };
 
-// --- 2. GESTIONE DATI SOCIETÀ E ATLETI ---
+// --- GESTIONE DATI ---
 
 window.fetchSocietyNameOnLoad = async function() {
-    const { data: { user } } = await window.supabaseClient.auth.getUser();
+    const user = await window.checkAuth();
     if (user) {
         const { data } = await window.supabaseClient.from('societa').select('nome').eq('user_id', user.id).single();
         if (data && document.getElementById('societyNameDisplay')) {
@@ -99,21 +87,15 @@ window.fetchSocietyNameOnLoad = async function() {
 
 window.fetchAthletes = async function(filterEventId = null) {
     try {
-        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        const user = await window.checkAuth();
         if (!user) return;
-
         const { data: society } = await window.supabaseClient.from('societa').select('id').eq('user_id', user.id).single();
         if (!society) return;
 
         let athletesData = [];
         if (filterEventId) {
-            const { data } = await window.supabaseClient.from('iscrizioni_eventi')
-                .select('atleti (*), eventi (nome)')
-                .eq('evento_id', filterEventId);
-            
-            athletesData = (data || [])
-                .filter(sub => sub.atleti && sub.atleti.society_id === society.id)
-                .map(sub => ({ ...sub.atleti, iscritti_evento_nome: sub.eventi.nome }));
+            const { data } = await window.supabaseClient.from('iscrizioni_eventi').select('atleti (*), eventi (nome)').eq('evento_id', filterEventId);
+            athletesData = (data || []).filter(s => s.atleti && s.atleti.society_id === society.id).map(s => ({ ...s.atleti, iscritti_evento_nome: s.eventi.nome }));
         } else {
             const { data } = await window.supabaseClient.from('atleti').select('*').eq('society_id', society.id);
             athletesData = data || [];
@@ -139,23 +121,18 @@ window.fetchAthletes = async function(filterEventId = null) {
                 actions.innerHTML = `<button class="btn btn-danger btn-sm" onclick="removeAthlete('${a.id}', this.parentElement.parentElement)">Rimuovi</button>`;
             });
         }
-    } catch (err) {
-        console.error("Errore fetchAthletes:", err);
-    }
+    } catch (err) { console.error(err); }
 };
 
 window.removeAthlete = async function(id, row) {
-    if (confirm("Eliminare definitivamente l'atleta/squadra?")) {
+    if (confirm("Eliminare?")) {
         const { error } = await window.supabaseClient.from('atleti').delete().eq('id', id);
         if (!error) row.remove();
-        else alert("Errore durante l'eliminazione.");
     }
 };
 
-// --- 3. GESTIONE EVENTI DOM ---
-
+// Event Listeners per i form
 document.addEventListener('DOMContentLoaded', () => {
-    // Gestione Form Login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.onsubmit = (e) => {
@@ -163,22 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
             window.signIn(document.getElementById('email').value, document.getElementById('password').value);
         };
     }
-
-    // Gestione Form Registrazione
     const regForm = document.getElementById('registrazioneForm');
     if (regForm) {
         regForm.onsubmit = (e) => {
             e.preventDefault();
-            const p1 = document.getElementById('password').value;
-            const p2 = document.getElementById('passwordConfirm').value;
-            if (p1 !== p2) return alert("Le password non corrispondono!");
-
-            window.signUp(
-                document.getElementById('email').value,
-                p1,
-                document.getElementById('nomeSocieta').value,
-                document.getElementById('Phone').value
-            );
+            window.signUp(document.getElementById('email').value, document.getElementById('password').value, document.getElementById('nomeSocieta').value, document.getElementById('Phone').value);
         };
     }
 });
+
