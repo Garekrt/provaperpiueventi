@@ -1,59 +1,61 @@
-// 1. Inizializzazione sicura e globale
+/**
+ * INIZIALIZZAZIONE SUPABASE
+ */
 (function() {
-    if (typeof window.supabase === 'undefined') {
-        // La libreria CDN espone 'supabase' con la funzione 'createClient'
+    // La libreria CDN v2 espone 'supabase' come oggetto globale
+    if (typeof window.supabaseClient === 'undefined') {
         const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
-        // ⚠️ USA LA "ANON PUBLIC KEY"
+        // ⚠️ SOSTITUISCI CON LA TUA "ANON PUBLIC KEY" (NON LA SERVICE ROLE)
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMDgyNDksImV4cCI6MjA3NTY4NDI0OX0.M6z_C3naK-EmcUawCjZa6rOkLc57p3XZ98k67CyXPDQ'; 
-        
-        window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Inizializzazione corretta per la v2 caricata da CDN
+        window.supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        console.log("Supabase Client inizializzato.");
     }
 })();
 
-// Definiamo le variabili come globali (window.nome) per evitare conflitti tra file
-window.ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1';
+// Shortcut globale per tutti gli altri file
+var supabase = window.supabaseClient;
 
-// --- FUNZIONE DI AUTENTICAZIONE ---
+// --- FUNZIONI GLOBALI (window.nomeFunzione le rende accessibili ovunque) ---
+
 window.checkAuth = async function() {
     try {
-        const { data, error } = await window.supabase.auth.getUser();
+        const { data, error } = await window.supabaseClient.auth.getUser();
         if (error || !data || !data.user) {
-            if (!window.location.href.includes("login.html")) {
+            if (!window.location.href.includes("login.html") && !window.location.href.includes("registrazione.html")) {
                 window.location.href = "login.html";
             }
             return null;
         }
         return data.user;
     } catch (e) {
-        console.error("Errore auth:", e);
+        console.error("Errore critico in checkAuth:", e);
         return null;
     }
 };
 
-// --- FUNZIONE CARICAMENTO NOME SOCIETA ---
 window.fetchSocietyNameOnLoad = async function() {
-    const { data: { user } } = await window.supabase.auth.getUser();
+    const user = await window.checkAuth();
     if (user) {
-        const { data } = await window.supabase.from('societa').select('nome').eq('user_id', user.id).single();
+        const { data } = await window.supabaseClient.from('societa').select('nome').eq('user_id', user.id).single();
         if (data && document.getElementById('societyNameDisplay')) {
             document.getElementById('societyNameDisplay').textContent = data.nome;
         }
     }
 };
 
-// --- FUNZIONE CARICAMENTO ATLETI (Quella che ti dava errore) ---
 window.fetchAthletes = async function(filterEventId = null) {
     try {
-        console.log("Eseguo fetchAthletes per evento:", filterEventId);
-        const { data: { user } } = await window.supabase.auth.getUser();
+        const user = await window.checkAuth();
         if (!user) return;
 
-        const { data: society } = await window.supabase.from('societa').select('id').eq('user_id', user.id).single();
+        const { data: society } = await window.supabaseClient.from('societa').select('id').eq('user_id', user.id).single();
         if (!society) return;
 
         let athletesData = [];
         if (filterEventId) {
-            const { data } = await window.supabase.from('iscrizioni_eventi')
+            const { data } = await window.supabaseClient.from('iscrizioni_eventi')
                 .select('atleti (*), eventi (nome)')
                 .eq('evento_id', filterEventId);
             
@@ -61,7 +63,7 @@ window.fetchAthletes = async function(filterEventId = null) {
                 .filter(sub => sub.atleti && sub.atleti.society_id === society.id)
                 .map(sub => ({ ...sub.atleti, iscritti_evento_nome: sub.eventi.nome }));
         } else {
-            const { data } = await window.supabase.from('atleti').select('*').eq('society_id', society.id);
+            const { data } = await window.supabaseClient.from('atleti').select('*').eq('society_id', society.id);
             athletesData = data || [];
         }
 
@@ -86,13 +88,13 @@ window.fetchAthletes = async function(filterEventId = null) {
             });
         }
     } catch (err) { 
-        console.error("Errore critico in fetchAthletes:", err); 
+        console.error("Errore in fetchAthletes:", err); 
     }
 };
 
 window.removeAthlete = async function(id, row) {
     if (confirm("Eliminare?")) {
-        const { error } = await window.supabase.from('atleti').delete().eq('id', id);
+        const { error } = await window.supabaseClient.from('atleti').delete().eq('id', id);
         if (!error) row.remove();
     }
 };
