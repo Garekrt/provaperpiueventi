@@ -68,45 +68,27 @@
         </p>
 
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script src="script2.js"></script>
 
     <script>
-        // Funzione di utility per reindirizzare alla pagina index.html con l'ID dell'evento
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+            await fetchSocietyNameOnLoad();
+            if (typeof populateEventSelector === 'function') {
+                await populateEventSelector('eventSelector');
+            }
+        });
+
         function goToEventPage() {
             const eventId = document.getElementById('eventSelector').value;
             if (eventId) {
-                // Passa l'ID dell'evento come parametro URL
                 window.location.href = `index.html?event_id=${eventId}`;
             } else {
-                alert("Per favore, seleziona un evento.");
+                alert("Seleziona un evento");
             }
         }
-        
-        // Funzione per tornare alla pagina di gestione atleti (caricata in modalità "tutti")
-        function goToAthleteManager() {
-            window.location.href = 'index.html';
-        }
-
-        // Al caricamento della pagina, popola il selettore eventi (funzione in script2.js)
-        document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO 'async' QUI
-             // Carica il nome della società e popola il selettore eventi.
-             await fetchSocietyNameOnLoad(); 
-             // Carica la funzione popola eventi da script2.js
-             await populateEventSelector('eventSelector'); 
-        });
-        
-        // Assicurati che l'utente sia loggato
-        async function checkAuth() {
-            const { data } = await supabase.auth.getUser();
-            if (!data.user) {
-                window.location.href = "login.html";
-            }
-        }
-        checkAuth();
     </script>
 </body>
-
 </html>
