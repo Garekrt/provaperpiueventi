@@ -6,10 +6,10 @@ if (typeof window.supabaseClient === 'undefined') {
     // La libreria CDN espone 'supabase' come oggetto globale per creare il client
     const createClient = window.supabase.createClient; 
     
-    const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
+    const supabaseUrl = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMDgyNDksImV4cCI6MjA3NTY4NDI0OX0.M6z_C3naK-EmcUawCjZa6rOkLc57p3XZ98k67CyXPDQ';
     
     // ⚠️ SOSTITUISCI QUESTA CHIAVE CON LA TUA "ANON PUBLIC KEY"
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMDgyNDksImV4cCI6MjA3NTY4NDI0OX0.M6z_C3naK-EmcUawCjZa6rOkLc57p3XZ98k67CyXPDQ'; 
+    const supabaseKey = 'INSERISCI_QUI_LA_TUA_ANON_PUBLIC_KEY'; 
 
     window.supabaseClient = createClient(supabaseUrl, supabaseKey);
     console.log("Supabase Client inizializzato correttamente.");
