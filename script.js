@@ -98,3 +98,16 @@ window.removeAthlete = async function(id, row) {
         if (!error) row.remove();
     }
 };
+// Aggiungi questo in fondo a script.js
+window.signOut = async function() {
+    try {
+        const { error } = await window.supabaseClient.auth.signOut();
+        if (error) throw error;
+        
+        // Pulisce eventuali dati in memoria
+        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Errore durante il logout:', error.message);
+        alert('Errore durante il logout.');
+    }
+};
