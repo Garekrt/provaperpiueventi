@@ -221,42 +221,48 @@
             </div>
 
     </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="script.js"></script>
+    
     <script src="script2.js"></script>
 
     <script>
-        // Inizializzazione sicura
-        async function startApp() {
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Aspettiamo che le funzioni siano caricate globalmente
+                // Verifichiamo che script.js sia stato caricato
                 if (typeof window.checkAuth !== 'function') {
-                    console.error("Errore: script.js non è stato caricato correttamente.");
+                    console.error("Errore: script.js non caricato correttamente.");
                     return;
                 }
 
+                // Eseguiamo l'autenticazione
                 const user = await window.checkAuth();
-                if (!user) return;
+                if (!user) return; // Se non loggato, checkAuth reindirizza a login.html
 
+                // Carichiamo i dati
                 await window.fetchSocietyNameOnLoad();
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const eventId = urlParams.get('event_id');
-
-                // Chiamiamo fetchAthletes solo se esiste
-                if (typeof window.fetchAthletes === 'function') {
-                    await window.fetchAthletes(eventId);
+                
+                // Aggiorniamo l'intestazione evento
+                const displayEvent = document.getElementById('currentEventDisplay');
+                if (displayEvent) {
+                    displayEvent.textContent = eventId ? `Evento ID: ${eventId}` : 'Tutti gli Atleti';
                 }
 
+                // Carichiamo gli atleti
+                await window.fetchAthletes(eventId);
+
+                // Se script2.js è caricato, eseguiamo le sue funzioni
                 if (typeof window.showAdminSection === 'function') await window.showAdminSection();
                 if (typeof window.populateEventSelector === 'function') await window.populateEventSelector('eventSelector');
 
             } catch (err) {
-                console.error("Errore inizializzazione index.html:", err);
+                console.error("Errore durante l'inizializzazione della pagina:", err);
             }
-        }
-
-        // Avvio al caricamento del DOM
-        document.addEventListener('DOMContentLoaded', startApp);
+        });
     </script>
+</body>
+</html>
