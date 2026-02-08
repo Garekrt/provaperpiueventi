@@ -1,6 +1,6 @@
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
-const supabaseKey = 'sb_publishable_0ySBMo5cRopfFHYHkaNmyA_qFrVUlvJ';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
