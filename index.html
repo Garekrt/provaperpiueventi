@@ -222,32 +222,44 @@
 
     </div>
 
-   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script src="script2.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Verifica autenticazione
-            const user = await checkAuth(); 
-            if (!user) return;
+        // Gestione avvio pagina index
+        (async function initPage() {
+            // Aspettiamo che il DOM sia pronto
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    // 1. Controllo Autenticazione (Funzione da script.js)
+                    const user = await checkAuth();
+                    if (!user) return;
 
-            // 2. Carica nome società
-            await fetchSocietyNameOnLoad();
+                    // 2. Caricamento dati iniziali
+                    await fetchSocietyNameOnLoad();
 
-            // 3. Gestisci parametri URL per eventi
-            const urlParams = new URLSearchParams(window.location.search);
-            const eventId = urlParams.get('event_id');
-            const displayEvent = document.getElementById('currentEventDisplay');
-            if (displayEvent) displayEvent.textContent = eventId ? `Evento ID: ${eventId}` : 'Tutti gli Atleti';
+                    // 3. Gestione parametri URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const eventId = urlParams.get('event_id');
+                    
+                    const displayEvent = document.getElementById('currentEventDisplay');
+                    if (displayEvent) {
+                        displayEvent.textContent = eventId ? `Evento selezionato ID: ${eventId}` : 'Visualizzazione: Tutti gli Atleti';
+                    }
 
-            // 4. Carica atleti
-            await fetchAthletes(eventId);
+                    // 4. Carica lista atleti
+                    await fetchAthletes(eventId);
 
-            // 5. Inizializza funzioni Admin (da script2.js)
-            if (typeof showAdminSection === 'function') await showAdminSection();
-            if (typeof populateEventSelector === 'function') await populateEventSelector('eventSelector');
-        });
+                    // 5. Inizializza componenti admin da script2.js
+                    if (typeof showAdminSection === 'function') await showAdminSection();
+                    if (typeof populateEventSelector === 'function') await populateEventSelector('eventSelector');
+                    
+                } catch (err) {
+                    console.error("Errore durante l'inizializzazione:", err);
+                }
+            });
+        })();
     </script>
 </body>
 </html>
