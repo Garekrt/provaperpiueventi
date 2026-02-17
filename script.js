@@ -1,7 +1,32 @@
-const { createClient } = window.supabase;
-const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
+// --- PARTE MODIFICATA: INIZIALIZZAZIONE E ESPOSIZIONE GLOBALE ---
+const { createClient } = window.supabase; 
+const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co'; 
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ'; [cite: 1]
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Espongo signOut globalmente per correggere l'errore "signOut is not defined"
+window.signOut = async function() { 
+    try {
+        const { error } = await supabase.auth.signOut(); 
+        if (error) throw error; 
+        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Errore durante il logout:', error.message); 
+        alert('Errore durante il logout.'); 
+    }
+};
+
+// Espongo checkAuth globalmente per l'uso in index.html
+window.checkAuth = async function() { 
+    try {
+        const { data, error } = await supabase.auth.getUser(); 
+        if (error || !data.user) { 
+            window.location.href = "login.html"; 
+        }
+    } catch (e) {
+        window.location.href = "login.html";    }
+};
+// --- FINE PARTE MODIFICATA ---
 
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
