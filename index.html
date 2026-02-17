@@ -222,18 +222,15 @@
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script src="script.js"></script>
-    
-    <script src="script2.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <script>
-        // Eseguiamo il controllo solo quando tutto è caricato
-        window.addEventListener('load', () => {
-            if (typeof window.checkAuth === 'function') {
-                window.checkAuth();
-            }
-        });
-    </script>
-</body>
+<script src="script.js"></script>
+<script src="script2.js"></script>
+
+<script>
+    window.addEventListener('load', () => {
+        if (typeof window.checkAuth === 'function') {
+            window.checkAuth();
+        }
+    });
+</script>
