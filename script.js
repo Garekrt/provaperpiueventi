@@ -1,20 +1,16 @@
-// Usiamo 'var' o controlliamo se esiste già per evitare il SyntaxError se il file viene ricaricato
-if (typeof window.supabaseClient === 'undefined') {
-    const { createClient } = window.supabase;
-    const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
-    
-    // Usiamo una proprietà di window per rendere l'istanza unica e globale
-    window.supabaseClient = createClient(supabaseUrl, supabaseKey);
+// --- MODIFICA DEFINITIVA PER ELIMINARE IL CONFLITTO ---
+// Non usiamo più "const" a livello globale per evitare "already been declared"
+if (!window.supabase) {
+    var { createClient } = window.supabase;
+    var supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
+    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
+    window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 }
 
-// Creiamo un riferimento locale 'supabase' per non dover cambiare il resto del tuo codice
-const supabase = window.supabaseClient; 
-
-// --- FUNZIONI DI AUTENTICAZIONE ESPOSTE GLOBALMENTE ---
+// Definiamo signOut come proprietà di window così l'HTML lo trova sempre
 window.signOut = async function() {
     try {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await window.supabase.auth.signOut();
         if (error) throw error;
         window.location.href = 'login.html';
     } catch (error) {
@@ -23,14 +19,18 @@ window.signOut = async function() {
     }
 };
 
+// Definiamo anche checkAuth globalmente
 window.checkAuth = async function() {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
+    try {
+        const { data } = await window.supabase.auth.getUser();
+        if (!data || !data.user) {
+            window.location.href = "login.html";
+        }
+    } catch (e) {
         window.location.href = "login.html";
     }
 };
-// --- FINE PARTE MODIFICATA ---
-
+// --- FINE MODIFICHE ---F
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
 let ADMIN_SOCIETY_ID = null;
