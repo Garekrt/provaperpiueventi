@@ -1,30 +1,33 @@
-// --- PARTE MODIFICATA: INIZIALIZZAZIONE E ESPOSIZIONE GLOBALE ---
-const { createClient } = window.supabase; 
-const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co'; 
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ'; [cite: 1]
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Usiamo 'var' o controlliamo se esiste già per evitare il SyntaxError se il file viene ricaricato
+if (typeof window.supabaseClient === 'undefined') {
+    const { createClient } = window.supabase;
+    const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
+    
+    // Usiamo una proprietà di window per rendere l'istanza unica e globale
+    window.supabaseClient = createClient(supabaseUrl, supabaseKey);
+}
 
-// Espongo signOut globalmente per correggere l'errore "signOut is not defined"
-window.signOut = async function() { 
+// Creiamo un riferimento locale 'supabase' per non dover cambiare il resto del tuo codice
+const supabase = window.supabaseClient; 
+
+// --- FUNZIONI DI AUTENTICAZIONE ESPOSTE GLOBALMENTE ---
+window.signOut = async function() {
     try {
-        const { error } = await supabase.auth.signOut(); 
-        if (error) throw error; 
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
         window.location.href = 'login.html';
     } catch (error) {
-        console.error('Errore durante il logout:', error.message); 
-        alert('Errore durante il logout.'); 
+        console.error('Errore durante il logout:', error.message);
+        alert('Errore durante il logout.');
     }
 };
 
-// Espongo checkAuth globalmente per l'uso in index.html
-window.checkAuth = async function() { 
-    try {
-        const { data, error } = await supabase.auth.getUser(); 
-        if (error || !data.user) { 
-            window.location.href = "login.html"; 
-        }
-    } catch (e) {
-        window.location.href = "login.html";    }
+window.checkAuth = async function() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+        window.location.href = "login.html";
+    }
 };
 // --- FINE PARTE MODIFICATA ---
 
