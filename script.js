@@ -1,5 +1,5 @@
 // ================================================================================
-// 1. INIZIALIZZAZIONE UNICA (CORREZIONE ERRORE "ALREADY DECLARED")
+// 1. INIZIALIZZAZIONE GLOBALE SICURA
 // ================================================================================
 if (!window.supabaseClient) {
     const { createClient } = window.supabase;
@@ -10,16 +10,16 @@ if (!window.supabaseClient) {
 var supabase = window.supabaseClient;
 
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
-let ADMIN_SOCIETY_ID = null;
 
 // ================================================================================
-// 2. FUNZIONI DI AUTENTICAZIONE E SICUREZZA
+// 2. FUNZIONI DI AUTENTICAZIONE
 // ================================================================================
-
 window.checkAuth = async function() {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
-        window.location.href = "login.html";
+        if (!window.location.pathname.includes('login.html') && !window.location.pathname.includes('registrazione.html')) {
+            window.location.href = "login.html";
+        }
         return null;
     }
     return data.user;
@@ -30,59 +30,15 @@ window.signOut = async function() {
     window.location.href = 'login.html';
 };
 
-async function signUp(email, password, nomeSocieta, Phone) {
-    try {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        const { error: societaError } = await supabase.from('societa').insert([{ 
-            nome: nomeSocieta, 
-            email: email, 
-            Phone: Phone, 
-            user_id: data.user.id 
-        }]);
-        if (societaError) throw societaError;
-        alert('Registrazione avvenuta! Verifica la tua email.');
-        window.location.href = '/login.html';
-    } catch (error) {
-        alert('Errore: ' + error.message);
-    }
-}
-
-async function signIn(email, password) {
-    try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        window.location.href = '/index.html';
-    } catch (error) {
-        alert('Accesso fallito: ' + error.message);
-    }
-}
-
 // ================================================================================
-// 3. LOGICA AMMINISTRATORE (PER FAR APPARIRE I FORM NASCOSTI)
+// 3. RECUPERO E VISUALIZZAZIONE ATLETI (LA FUNZIONE MANCANTE)
 // ================================================================================
-
-async function showAdminSection() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && user.id === ADMIN_USER_ID) {
-        // Questi ID devono esistere nel tuo index.html
-        const adminDiv = document.getElementById('adminEventCreation');
-        const adminLimits = document.getElementById('adminLimitsConfig');
-        if (adminDiv) adminDiv.style.display = 'block';
-        if (adminLimits) adminLimits.style.display = 'block';
-        console.log("Modalità Admin Attivata");
-    }
-}
-
-// ================================================================================
-// 4. RECUPERO DATI E VISUALIZZAZIONE ATLETI (LOGICA ORIGINALE)
-// ================================================================================
-
 async function fetchAthletes(filterEventId = null) {
     try {
         const user = await window.checkAuth();
         if (!user) return;
 
+        // Recupera ID società
         const { data: society } = await supabase.from('societa').select('id').eq('user_id', user.id).single();
         if (!society) return;
         
@@ -90,16 +46,25 @@ async function fetchAthletes(filterEventId = null) {
         let athletesData = [];
 
         if (filterEventId) {
-            const { data: subData } = await supabase
+            // Filtra per evento specifico
+            const { data: subData, error: subError } = await supabase
                 .from('iscrizioni_eventi')
                 .select(`atleti (*), eventi (nome)`)
                 .eq('evento_id', filterEventId);
             
+            if (subError) throw subError;
+
             athletesData = subData
                 .filter(sub => sub.atleti && sub.atleti.society_id === societyId)
-                .map(sub => ({ ...sub.atleti, iscritti_evento_nome: sub.eventi.nome, iscritti_evento_stato: 'Iscritto' }));
+                .map(sub => ({ 
+                    ...sub.atleti, 
+                    iscritti_evento_nome: sub.eventi.nome, 
+                    iscritti_evento_stato: 'Iscritto' 
+                }));
         } else {
-            const { data } = await supabase.from('atleti').select('*').eq('society_id', societyId);
+            // Prendi tutti gli atleti della società
+            const { data, error } = await supabase.from('atleti').select('*').eq('society_id', societyId);
+            if (error) throw error;
             athletesData = data;
         }
 
@@ -124,7 +89,21 @@ async function fetchAthletes(filterEventId = null) {
             });
         }
     } catch (error) {
-        console.error("Errore fetchAtleti:", error.message);
+        console.error("Errore fetchAthletes:", error.message);
+    }
+}
+
+// ================================================================================
+// 4. GESTIONE ADMIN E CARICAMENTO INIZIALE
+// ================================================================================
+async function showAdminSection() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.id === ADMIN_USER_ID) {
+        const adminDiv = document.getElementById('adminEventCreation');
+        const adminLimits = document.getElementById('adminLimitsConfig');
+        if (adminDiv) adminDiv.style.display = 'block';
+        if (adminLimits) adminLimits.style.display = 'block';
+        console.log("Admin sbloccato");
     }
 }
 
@@ -136,52 +115,29 @@ async function fetchSocietyNameOnLoad() {
             const display = document.getElementById('societyNameDisplay');
             if (display) display.textContent = societyData.nome;
         }
-        await showAdminSection(); // <--- IMPORTANTE: Sblocca admin dopo il caricamento
+        
+        await showAdminSection(); 
         
         const urlParams = new URLSearchParams(window.location.search);
         const eventId = urlParams.get('event_id');
-        if (document.getElementById('athleteList')) fetchAthletes(eventId);
+        
+        // Ora fetchAthletes è definita e non darà più errore
+        if (document.getElementById('athleteList')) {
+            await fetchAthletes(eventId);
+        }
     }
 }
 
 // ================================================================================
-// 5. EVENT LISTENERS (DOM)
+// 5. AVVIO E LISTENERS
 // ================================================================================
-
 document.addEventListener('DOMContentLoaded', async () => {
-    // Gestione Login
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await signIn(document.getElementById('email').value, document.getElementById('password').value);
-        });
-    }
+    // Gestione Logout (se il bottone esiste)
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', window.signOut);
 
-    // Gestione Registrazione
-    const regForm = document.getElementById('registrazioneForm');
-    if (regForm) {
-        regForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await signUp(
-                document.getElementById('email').value,
-                document.getElementById('password').value,
-                document.getElementById('nomeSocieta').value,
-                document.getElementById('Phone').value
-            );
-        });
+    // Se siamo nella dashboard, carica i dati
+    if (document.getElementById('societyNameDisplay') || document.getElementById('athleteList')) {
+        await fetchSocietyNameOnLoad();
     }
-
-    // Toggle Modulo Squadra
-    const toggleBtn = document.getElementById('toggleTeamForm');
-    const teamDiv = document.getElementById('teamFormContainer');
-    if (toggleBtn && teamDiv) {
-        toggleBtn.addEventListener('click', () => {
-            const isHidden = teamDiv.style.display === 'none';
-            teamDiv.style.display = isHidden ? 'block' : 'none';
-            toggleBtn.textContent = isHidden ? 'Nascondi Modulo Squadra' : 'Mostra Modulo Squadra';
-        });
-    }
-
-    if (!loginForm && !regForm) await fetchSocietyNameOnLoad();
 });
