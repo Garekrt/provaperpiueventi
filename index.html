@@ -223,17 +223,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script src="script.js"></script>
+    
     <script src="script2.js"></script>
 
     <script>
-        // Non dichiarare 'const supabase' qui! È già in script.js
-        // Usiamo un piccolo ritardo o aspettiamo che script.js sia pronto
-        window.addEventListener('load', async () => {
-            if (typeof checkAuth === 'function') {
-                await checkAuth();
+        // Eseguiamo il controllo solo quando tutto è caricato
+        window.addEventListener('load', () => {
+            if (typeof window.checkAuth === 'function') {
+                window.checkAuth();
             }
         });
     </script>
 </body>
-</html>
