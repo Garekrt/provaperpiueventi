@@ -227,13 +227,13 @@
     <script src="script2.js"></script>
 
     <script>
-        async function checkAuth() {
-            const { data } = await supabase.auth.getUser();
-            if (!data.user) {
-                window.location.href = "login.html";
+        // Non dichiarare 'const supabase' qui! È già in script.js
+        // Usiamo un piccolo ritardo o aspettiamo che script.js sia pronto
+        window.addEventListener('load', async () => {
+            if (typeof checkAuth === 'function') {
+                await checkAuth();
             }
-        }
-        checkAuth();
+        });
     </script>
 </body>
 </html>
