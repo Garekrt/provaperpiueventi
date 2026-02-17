@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleziona Evento</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 30px;
+        }
+        
+        #eventSelector {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1>Seleziona Evento</h1>
+            <button onclick="signOut()" class="btn btn-warning btn-sm">Logout</button>
+        </div>
+
+        <p>Seleziona l'evento a cui vuoi accedere per gestire le iscrizioni degli atleti.</p>
+        
+        <select id="eventSelector" required>
+            <option value="">Caricamento eventi disponibili...</option>
+        </select>
+        
+        <button type="button" onclick="goToEventPage()" class="btn btn-primary">Accedi all'Evento</button>
+
+        <hr style="margin-top: 30px;">
+        <p style="font-size: 0.9em; color: #6c757d;">
+            Per tornare alla pagina di gestione degli atleti (senza filtro evento):
+            <button type="button" onclick="goToAthleteManager(null)" class="btn btn-secondary btn-sm ml-2">Gestione Atleti Generica</button>
+        </p>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script src="script2.js"></script>
+
+    <script>
+        // Funzione di utility per reindirizzare alla pagina index.html con l'ID dell'evento
+        function goToEventPage() {
+            const eventId = document.getElementById('eventSelector').value;
+            if (eventId) {
+                // Passa l'ID dell'evento come parametro URL
+                window.location.href = `index.html?event_id=${eventId}`;
+            } else {
+                alert("Per favore, seleziona un evento.");
+            }
+        }
+        
+        // Funzione per tornare alla pagina di gestione atleti (caricata in modalità "tutti")
+        function goToAthleteManager() {
+            window.location.href = 'index.html';
+        }
+
+        // Al caricamento della pagina, popola il selettore eventi (funzione in script2.js)
+        document.addEventListener('DOMContentLoaded', async () => { // ⭐️ AGGIUNTO 'async' QUI
+             // Carica il nome della società e popola il selettore eventi.
+             await fetchSocietyNameOnLoad(); 
+             // Carica la funzione popola eventi da script2.js
+             await populateEventSelector('eventSelector'); 
+        });
+        
+        // Assicurati che l'utente sia loggato
+        async function checkAuth() {
+            const { data } = await supabase.auth.getUser();
+            if (!data.user) {
+                window.location.href = "login.html";
+            }
+        }
+        checkAuth();
+    </script>
+</body>
+
+</html>

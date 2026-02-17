@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Modulo di Iscrizione Atleti</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .form-container {
+            flex: 1;
+            max-width: 1100px;
+            background: white;
+            padding: 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-right: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="form-container">
+        <h1>Gestione Atleti</h1>
+        <p>Società: <span id="societyNameDisplay">Caricamento...</span></p>
+        <p>Evento Attuale: <span id="currentEventDisplay">Nessuno</span></p>
+        <button onclick="signOut()">Logout</button>
+        <hr>
+
+        <label for="eventSelector">Seleziona Evento:</label>
+        <select id="eventSelector" onchange="window.location.href = 'index.html?event_id=' + this.value;">
+            </select>
+        <hr>
+
+        <div class="stats-container">
+            <h2>Statistiche Iscrizioni Evento</h2>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Specialità</th>
+                        <th>Iscritti (Attuali / Totali)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Kumite</td>
+                        <td id="KumiteAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kata</td>
+                        <td id="KataAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>ParaKarate</td>
+                        <td id="ParaKarateAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>KIDS (Percorso)</td>
+                        <td id="KIDSAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kata Squadre</td>
+                        <td id="Kata_SquadreAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                    <tr>
+                        <td>Kumite Squadre</td>
+                        <td id="Kumite_SquadreAthleteCountDisplay">Caricamento...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <hr>
+
+        <h2>Iscrizione Atleta Individuale</h2>
+        <form id="athleteForm">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="firstName">Nome</label>
+                    <input type="text" class="form-control" id="firstName" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="lastName">Cognome</label>
+                    <input type="text" class="form-control" id="lastName" required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="birthdate">Data di Nascita</label>
+                    <input type="date" class="form-control" id="birthdate" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <label for="gender">Sesso</label>
+                    <select id="gender" class="form-control" required>
+                        <option value="">Seleziona...</option>
+                        <option value="Maschio">Maschio</option>
+                        <option value="Femmina">Femmina</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="classe">Classe</label>
+                    <select id="classe" class="form-control" required>
+                        </select>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="specialty">Specialità</label>
+                    <select id="specialty" class="form-control" required>
+                        </select>
+                </div>
+                <div class="form-group col-md-3">
+                    <label for="belt">Cintura</label>
+                    <select id="belt" class="form-control" required>
+                        </select>
+                </div>
+            </div>
+            <div class="form-row">
+                 <div class="form-group col-md-6">
+                    <label for="weightCategory">Categoria di Peso (Solo Kumite/ParaKarate)</label>
+                    <select id="weightCategory" class="form-control" disabled>
+                        </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Aggiungi Atleta</button>
+        </form>
+        <hr>
+
+        <button id="toggleTeamForm" class="btn btn-info mb-3">
+            Mostra Modulo Iscrizione Squadra
+        </button>
+        
+        <div id="teamFormContainer" style="display:none;">
+            <h2>Iscrizione Squadra</h2>
+            <form id="teamForm">
+                 <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="teamName">Nome Squadra (es. "Società X Team A")</label>
+                        <input type="text" class="form-control" id="teamName" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="teamSpecialty">Specialità Squadra</label>
+                        <select id="teamSpecialty" class="form-control" required>
+                            <option value="">Seleziona...</option>
+                            <option value="Kata_Squadre">Kata Squadre</option>
+                            <option value="Kumite_Squadre">Kumite Squadre</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="teamMembers">Membri della Squadra (max 5, min 3 - separati da virgola)</label>
+                    <textarea class="form-control" id="teamMembers" rows="3" placeholder="Nome Cognome Atleta 1, Nome Cognome Atleta 2, Nome Cognome Atleta 3, ... (Max 5)" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="teamClasse">Classe (Categoria)</label>
+                        <select id="teamClasse" class="form-control" required>
+                            <option value="">Seleziona...</option>
+                            <option value="Esordienti">Esordienti</option>
+                            <option value="Cadetti">Cadetti</option>
+                            <option value="Juniores">Juniores</option>
+                            <option value="Seniores">Seniores</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="teamBelt">Cintura Squadra</label>
+                        <select id="teamBelt" class="form-control" required>
+                            <option value="Marrone-Nera">Marrone/Nera</option>
+                            <option value="Blu-Marrone">Blu/Marrone</option>
+                        </select>
+                    </div>
+                     <div class="form-group col-md-4">
+                        <label for="teamGender">Genere</label>
+                        <select id="teamGender" class="form-control" required>
+                            <option value="Maschio">Maschile</option>
+                            <option value="Femmina">Femminile</option>
+                            <option value="Misto">Misto</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Iscrivi Squadra</button>
+            </form>
+        </div>
+        <hr>
+        
+
+        <h2>Atleti Iscritti all'Evento</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Cognome/Tipo</th>
+                    <th>Sesso</th>
+                    <th>Data Nascita/N/A</th>
+                    <th>Cintura</th>
+                    <th>Classe</th>
+                    <th>Specialità</th>
+                    <th>Peso/Membri</th> 
+                    <th>ID Società</th>
+                    <th>Stato Iscrizione</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="athleteList">
+                </tbody>
+        </table>
+
+        <div id="adminEventCreation" style="display:none;">
+            </div>
+        
+        <div id="adminLimitsConfig" style="display:none;">
+            </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script src="script2.js"></script>
+
+    <script>
+        async function checkAuth() {
+            const { data } = await supabase.auth.getUser();
+            if (!data.user) {
+                window.location.href = "login.html";
+            }
+        }
+        checkAuth();
+    </script>
+</body>
+</html>
