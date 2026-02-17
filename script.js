@@ -28,7 +28,7 @@ window.checkAuth = async function() {
 
 // ... il resto del tuo codice (signUp, signIn, ecc.)
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
-const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
+const ADMIN_USER_ID = 'c50a2401-32e7-4851-9e68-0f283ad8556d'; 
 let ADMIN_SOCIETY_ID = null;
 //================================================================================
 // FUNZIONI DI AUTENTICAZIONE
