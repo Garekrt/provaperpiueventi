@@ -1,36 +1,32 @@
-// --- MODIFICA DEFINITIVA PER ELIMINARE IL CONFLITTO ---
-// Non usiamo più "const" a livello globale per evitare "already been declared"
-if (!window.supabase) {
-    var { createClient } = window.supabase;
-    var supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
-    var supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
-    window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+// --- INIZIO PARTE CORRETTA ---
+// Usiamo 'var' invece di 'const' per evitare l'errore "already declared"
+if (typeof window.supabaseClient === 'undefined') {
+    const { createClient } = window.supabase;
+    const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
+    window.supabaseClient = createClient(supabaseUrl, supabaseKey);
 }
 
-// Definiamo signOut come proprietà di window così l'HTML lo trova sempre
+// Definiamo 'supabase' in modo che tutto il resto del tuo script funzioni
+var supabase = window.supabaseClient;
+
+// Rendiamo signOut globale per l'HTML
 window.signOut = async function() {
-    try {
-        const { error } = await window.supabase.auth.signOut();
-        if (error) throw error;
-        window.location.href = 'login.html';
-    } catch (error) {
-        console.error('Errore durante il logout:', error.message);
-        alert('Errore durante il logout.');
-    }
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
 };
 
-// Definiamo anche checkAuth globalmente
+// Funzione checkAuth corretta
 window.checkAuth = async function() {
-    try {
-        const { data } = await window.supabase.auth.getUser();
-        if (!data || !data.user) {
-            window.location.href = "login.html";
-        }
-    } catch (e) {
+    if (!supabase) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data || !data.user) {
         window.location.href = "login.html";
     }
 };
-// --- FINE MODIFICHE ---F
+// --- FINE PARTE CORRETTA ---
+
+// ... il resto del tuo codice (signUp, signIn, ecc.)
 // ⚠️ IMPORTANTE: SOSTITUISCI CON IL TUO USER_ID REALE DI SUPABASE (auth.users.id)
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1'; 
 let ADMIN_SOCIETY_ID = null;
