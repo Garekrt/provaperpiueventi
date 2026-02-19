@@ -78,32 +78,43 @@ window.calculateAthleteAttributes = function(birthDate, gender) {
 // 3. FUNZIONI ADMIN (RISOLUZIONE REFERENCEERROR)
 // ================================================================================
 window.handleCreateEvent = async function() {
-    const nome = document.getElementById("eventName").value;
-    const data = document.getElementById("eventDate").value;
-    const luogo = document.getElementById("eventLocation").value;
+    // 1. Recupero valori dai campi
+    const nome = document.getElementById("eventName").value.trim();
+    const data_raw = document.getElementById("eventDate").value; // Formato previsto: YYYY-MM-DD
+    const luogo = document.getElementById("eventLocation").value.trim();
+    const quota = document.getElementById("eventFee") ? parseFloat(document.getElementById("eventFee").value) : 0;
 
-    if (!nome || !data) return alert("Nome e Data sono obbligatori!");
-
-    const { error } = await supabase.from('eventi').insert([{
-        nome: nome,
-        data_evento: data,
-        luogo: luogo,
-        societa_organizzatrice_id: '1a02fab9-1a2f-48d7-9391-696f4fba88a1' // ID società admin
-    }]);
-
-    if (error) alert("Errore: " + error.message);
-    else { alert("Evento Creato!"); location.reload(); }
-};
-
-window.saveEventLimits = async function(eventId) {
-    const specs = ["Kumite", "Kata", "KIDS"];
-    for (let s of specs) {
-        const val = document.getElementById(`limit_${s}`)?.value || 5;
-        await supabase.from('limiti_evento').upsert({ evento_id: eventId, specialty: s, limite_max: parseInt(val) });
+    // 2. Controllo validità base
+    if (!nome || !data_raw) {
+        alert("Nome e Data sono campi obbligatori.");
+        return;
     }
-    alert("Limiti Salvati!");
-};
 
+    // 3. Preparazione oggetto (PULITO)
+    // Assicurati che societa_organizzatrice_id sia del tipo corretto nel tuo DB (UUID o INT)
+    const nuovoEvento = {
+        nome: nome,
+        data_evento: data_raw, 
+        luogo: luogo || "Da definire",
+        societa_organizzatrice_id: '1a02fab9-1a2f-48d7-9391-696f4fba88a1'
+    };
+
+    console.log("Tentativo di invio dati:", nuovoEvento);
+
+    // 4. Invio a Supabase
+    const { data, error } = await supabase
+        .from('eventi')
+        .insert([nuovoEvento])
+        .select();
+
+    if (error) {
+        console.error("ERRORE 400 - Dettagli:", error);
+        alert(`Errore di sistema (${error.code}): ${error.message}\n\nVerifica che il formato della data sia corretto e che le colonne nel DB esistano.`);
+    } else {
+        alert("Evento creato con successo!");
+        location.reload();
+    }
+};
 // ================================================================================
 // 4. LISTENERS
 // ================================================================================
