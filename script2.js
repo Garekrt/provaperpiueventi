@@ -131,7 +131,7 @@ window.handleCreateEvent = async function() {
     }
 };
 
-4. TABELLA ATLETI E SELETTORE EVENTI
+
 // ==========================================
 window.populateEventSelector = async function() {
     const sel = document.getElementById('eventSelector');
