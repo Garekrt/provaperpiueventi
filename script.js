@@ -1,29 +1,27 @@
-// 1. INIZIALIZZAZIONE SUPABASE
+// ==========================================
+// 1. CONFIGURAZIONE SUPABASE
+// ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://qdlfdfswufifgjdhmcsn.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbGZkZnN3dWZpZmdqZGhtY3NuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDEwODI0OSwiZXhwIjoyMDc1Njg0MjQ5fQ.cPQpmwujaQWufmk6BThsW15Hk3xD1dplw9FRrZG38BQ';
 window.supabaseClient = createClient(supabaseUrl, supabaseKey);
 var supabase = window.supabaseClient;
 
-// ⚠️ ADMIN ID (Deve corrispondere al tuo UUID in Auth -> Users)
+// Sostituisci questo ID con il tuo UUID che trovi in Supabase -> Auth -> Users
 const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1';
 
-// 2. FUNZIONI DI AUTENTICAZIONE
-window.checkAuth = async function() {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) {
-        if (!window.location.pathname.includes('login.html')) window.location.href = "login.html";
-        return null;
-    }
-    return user;
-};
-
+// ==========================================
+// 2. FUNZIONI DI AUTENTICAZIONE (Globale)
+// ==========================================
 window.signIn = async function(email, password) {
     try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        console.log("Login OK");
         window.location.href = 'index.html';
-    } catch (err) { alert("Errore Accesso: " + err.message); }
+    } catch (err) {
+        alert("Errore Accesso: " + err.message);
+    }
 };
 
 window.signOut = async function() {
@@ -31,7 +29,20 @@ window.signOut = async function() {
     window.location.href = 'login.html';
 };
 
-// 3. CARICAMENTO DATI INIZIALI (SOCIETÀ E MODALITÀ ADMIN)
+window.checkAuth = async function() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+        if (!window.location.pathname.includes('login.html')) {
+            window.location.href = "login.html";
+        }
+        return null;
+    }
+    return user;
+};
+
+// ==========================================
+// 3. CARICAMENTO DATI SOCIETÀ E ADMIN
+// ==========================================
 window.fetchSocietyNameOnLoad = async function() {
     const user = await window.checkAuth();
     if (!user) return;
@@ -44,21 +55,28 @@ window.fetchSocietyNameOnLoad = async function() {
             .single();
 
         if (society) {
-            // Aggiorna UI con nome società e ID reale per i form
-            if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').textContent = society.nome;
-            if (document.getElementById('adminSocietyIdDisplay')) document.getElementById('adminSocietyIdDisplay').textContent = society.id;
+            // Aggiorna Nome Società
+            const nameDisplay = document.getElementById('societyNameDisplay');
+            if (nameDisplay) nameDisplay.textContent = society.nome;
 
-            // ATTIVAZIONE MODALITÀ ADMIN
+            // Aggiorna ID per creazione eventi
+            const idDisplay = document.getElementById('adminSocietyIdDisplay');
+            if (idDisplay) idDisplay.textContent = society.id;
+
+            // Attivazione Pannello Admin
             if (user.id === ADMIN_USER_ID) {
                 const adminSection = document.getElementById('adminEventCreation');
-                if (adminSection) {
-                    adminSection.style.display = 'block';
-                    console.log("Modalità Amministratore Attivata.");
-                }
+                if (adminSection) adminSection.style.display = 'block';
             }
         }
-    } catch (err) { console.error("Errore Caricamento Società:", err.message); }
+    } catch (err) {
+        console.error("Errore fetchSociety:", err.message);
+    }
 };
 
-// Esegui al caricamento
-document.addEventListener('DOMContentLoaded', window.fetchSocietyNameOnLoad);
+// Inizializzazione automatica
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.location.pathname.includes('login.html')) {
+        window.fetchSocietyNameOnLoad();
+    }
+});
