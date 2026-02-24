@@ -88,26 +88,49 @@ window.fetchAthletes = async function(filterEventId = null) {
 };
 
 window.fetchSocietyNameOnLoad = async function() {
-    const user = await window.checkAuth();
-    if (user) {
-        const { data: societyData } = await supabase.from('societa').select('nome').eq('user_id', user.id).single();
-        if (societyData) {
-            const display = document.getElementById('societyNameDisplay');
-            if (display) display.textContent = societyData.nome;
-        }
+    try {
+        // 1. Controlla se l'utente è loggato
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
         
-        // Sblocca admin se necessario
-        if (user.id === ADMIN_USER_ID) {
-            const adminDiv = document.getElementById('adminEventCreation');
-            if (adminDiv) adminDiv.style.display = 'block';
+        if (authError || !user) {
+            console.log("Utente non loggato");
+            return;
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventId = urlParams.get('event_id');
-        if (document.getElementById('athleteList')) await fetchAthletes(eventId);
+        // 2. Cerca la società associata all'utente
+        const { data: societyData, error: socError } = await supabase
+            .from('societa')
+            .select('id, nome')
+            .eq('user_id', user.id)
+            .single();
+
+        if (socError) {
+            console.error("Errore nel recupero società:", socError.message);
+            const display = document.getElementById('societyNameDisplay');
+            if (display) display.textContent = "Società non trovata";
+            return;
+        }
+
+        // 3. Aggiorna i campi nella pagina
+        if (societyData) {
+            // Aggiorna il nome in alto
+            const nameDisplay = document.getElementById('societyNameDisplay');
+            if (nameDisplay) nameDisplay.textContent = societyData.nome;
+
+            // Aggiorna il testo "Caricamento..." con l'ID reale
+            const idDisplay = document.getElementById('adminSocietyIdDisplay');
+            if (idDisplay) idDisplay.textContent = societyData.id;
+            
+            // Mostra la sezione admin se sei l'admin configurato
+            if (user.id === ADMIN_USER_ID) {
+                const adminSection = document.getElementById('adminEventCreation');
+                if (adminSection) adminSection.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.error("Errore generale in fetchSocietyNameOnLoad:", error);
     }
 };
-
 document.addEventListener('DOMContentLoaded', async () => {
     if (!window.location.pathname.includes('login.html') && !window.location.pathname.includes('registrazione.html')) {
         await fetchSocietyNameOnLoad();
