@@ -131,14 +131,14 @@ window.handleCreateEvent = async function() {
     }
 };
 
-
-// ==========================================
 window.populateEventSelector = async function() {
     const sel = document.getElementById('eventSelector');
     if (!sel) return;
     const { data } = await supabase.from('eventi').select('*').order('data_evento', { ascending: false });
     sel.innerHTML = '<option value="">-- Seleziona Gara --</option>';
-    data?.forEach(ev => sel.innerHTML += `<option value="${ev.id}">${ev.nome}</option>`);
+    data?.forEach(ev => {
+        sel.innerHTML += `<option value="${ev.id}">${ev.nome}</option>`;
+    });
 };
 
 window.fetchAthletes = async function() {
@@ -146,28 +146,68 @@ window.fetchAthletes = async function() {
     const list = document.getElementById('athleteList');
     if (!eventId || !list) return;
 
-    const { data } = await supabase.from('atleti').select('*').eq('event_id', eventId);
+    const { data, error } = await supabase.from('atleti').select('*').eq('event_id', eventId);
+    if (error) return console.error(error);
+
     list.innerHTML = '';
     data?.forEach(a => {
-        list.innerHTML += `<tr><td>${a.first_name} ${a.last_name}</td><td>${a.classe}</td><td>${a.weight_category || 'N/A'}</td></tr>`;
+        list.innerHTML += `<tr>
+            <td>${a.first_name} ${a.last_name}</td>
+            <td>${a.classe}</td>
+            <td>${a.weight_category || 'N/A'}</td>
+            <td>${a.specialty}</td>
+        </tr>`;
     });
 };
+
 // ================================================================================
-// 4. LISTENERS
+// 5. LISTENERS E INVIO FORM ATLETA
 // ================================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    window.populateEventSelector();
+    
+    const eventSel = document.getElementById('eventSelector');
+    if (eventSel) eventSel.addEventListener('change', window.fetchAthletes);
+
     const bday = document.getElementById('birthdate');
     const gend = document.getElementById('gender');
     if (bday && gend) {
-        const update = () => calculateAthleteAttributes(bday.value, gend.value);
+        const update = () => window.calculateAthleteAttributes(bday.value, gend.value);
         bday.addEventListener('change', update);
         gend.addEventListener('change', update);
     }
 
-    // Gestione invio form atleta
     document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // Logica addAthlete (puoi usare quella del messaggio precedente)
-        alert("Funzione di invio attivata!");
+        
+        try {
+            const user = await supabase.auth.getUser();
+            const { data: society } = await supabase.from('societa').select('id').eq('user_id', user.data.user.id).single();
+            const eventId = document.getElementById('eventSelector').value;
+
+            if (!eventId) return alert("Seleziona un evento prima di registrare l'atleta!");
+
+            const payload = {
+                first_name: document.getElementById('firstName').value,
+                last_name: document.getElementById('lastName').value,
+                gender: document.getElementById('gender').value,
+                birthdate: document.getElementById('birthdate').value,
+                belt: document.getElementById('belt').value,
+                specialty: document.getElementById('specialty').value,
+                classe: document.getElementById('classe').value,
+                weight_category: document.getElementById('weightCategory').value,
+                society_id: society.id,
+                event_id: eventId
+            };
+
+            const { error } = await supabase.from('atleti').insert([payload]);
+            if (error) throw error;
+
+            alert("Atleta registrato con successo!");
+            window.fetchAthletes();
+            document.getElementById('athleteForm').reset();
+        } catch (err) {
+            alert("Errore registrazione: " + err.message);
+        }
     });
 });
