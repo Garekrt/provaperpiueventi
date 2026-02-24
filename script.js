@@ -8,7 +8,7 @@ window.supabaseClient = createClient(supabaseUrl, supabaseKey);
 var supabase = window.supabaseClient;
 
 // Sostituisci questo ID con il tuo UUID che trovi in Supabase -> Auth -> Users
-const ADMIN_USER_ID = '1a02fab9-1a2f-48d7-9391-696f4fba88a1';
+const ADMIN_USER_ID = 'c50a2401-32e7-4851-9e68-0f283ad8556d';
 
 // ==========================================
 // 2. FUNZIONI DI AUTENTICAZIONE (Globale)
