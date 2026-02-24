@@ -78,41 +78,56 @@ window.calculateAthleteAttributes = function(birthDate, gender) {
 // 3. FUNZIONI ADMIN (RISOLUZIONE REFERENCEERROR)
 // ================================================================================
 window.handleCreateEvent = async function() {
-    // 1. Recupero valori dai campi
-    const nome = document.getElementById("eventName").value.trim();
-    const data_raw = document.getElementById("eventDate").value; // Formato previsto: YYYY-MM-DD
-    const luogo = document.getElementById("eventLocation").value.trim();
-    const quota = document.getElementById("eventFee") ? parseFloat(document.getElementById("eventFee").value) : 0;
+    const nomeInput = document.getElementById("eventName");
+    const dataInput = document.getElementById("eventDate");
+    const luogoInput = document.getElementById("eventLocation");
 
-    // 2. Controllo validità base
-    if (!nome || !data_raw) {
-        alert("Nome e Data sono campi obbligatori.");
-        return;
+    if (!nomeInput.value || !dataInput.value) {
+        return alert("Nome e Data sono obbligatori per creare l'evento.");
     }
 
-    // 3. Preparazione oggetto (PULITO)
-    // Assicurati che societa_organizzatrice_id sia del tipo corretto nel tuo DB (UUID o INT)
-    const nuovoEvento = {
-        nome: nome,
-        data_evento: data_raw, 
-        luogo: luogo || "Da definire",
-        societa_organizzatrice_id: '1a02fab9-1a2f-48d7-9391-696f4fba88a1'
-    };
+    try {
+        // Recupero l'utente loggato
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) throw new Error("Sessione scaduta. Effettua di nuovo il login.");
 
-    console.log("Tentativo di invio dati:", nuovoEvento);
+        // Recupero l'ID reale della società
+        const { data: society, error: socError } = await supabase
+            .from('societa')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
 
-    // 4. Invio a Supabase
-    const { data, error } = await supabase
-        .from('eventi')
-        .insert([nuovoEvento])
-        .select();
+        if (socError || !society) {
+            throw new Error("Impossibile trovare la società associata al tuo profilo admin.");
+        }
 
-    if (error) {
-        console.error("ERRORE 400 - Dettagli:", error);
-        alert(`Errore di sistema (${error.code}): ${error.message}\n\nVerifica che il formato della data sia corretto e che le colonne nel DB esistano.`);
-    } else {
+        // Inserimento con gestione colonne extra
+        const { error: insertError } = await supabase
+            .from('eventi')
+            .insert([{
+                nome: nomeInput.value.trim(),
+                data_evento: dataInput.value,
+                luogo: luogoInput.value.trim() || "Da definire",
+                societa_organizzatrice_id: society.id,
+                quota_iscrizione: 0, // Evita errore 400 se la colonna è NOT NULL
+                attivo: true         // Se hai una colonna per attivare/disattivare l'evento
+            }]);
+
+        if (insertError) {
+            // Se l'errore è 23505, significa che hai un vincolo UNIQUE sul nome
+            if (insertError.code === '23505') {
+                throw new Error("Esiste già un evento con questo nome.");
+            }
+            throw insertError;
+        }
+
         alert("Evento creato con successo!");
         location.reload();
+
+    } catch (err) {
+        console.error("DEBUG CREAZIONE EVENTO:", err);
+        alert("Attenzione: " + err.message);
     }
 };
 // ================================================================================
