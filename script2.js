@@ -1,7 +1,7 @@
 var supabase = window.supabaseClient;
 
 // ================================================================================
-// 1. GESTIONE CATEGORIE DI PESO (RICHIESTA)
+// 1. GESTIONE CATEGORIE DI PESO E ATTRIBUTI (Tua Logica Originale)
 // ================================================================================
 window.updateWeightCategoryOptions = function(classe, gender, specialty) {
     const weightField = document.getElementById("weightCategory");
@@ -13,20 +13,12 @@ window.updateWeightCategoryOptions = function(classe, gender, specialty) {
     if (specialty === "Kumite") {
         weightField.disabled = false;
         let options = "";
-        
-        if (classe === "Esordienti") {
-            options = isMale ? "-40,-45,-50,-55,+55" : "-42,-47,-52,+52";
-        } else if (classe === "Cadetti") {
-            options = isMale ? "-47,-52,-57,-63,-70,-78,+78" : "-42,-47,-54,-61,-68,+68";
-        } else if (classe === "Juniores") {
-            options = isMale ? "-50,-55,-61,-68,-76,-86,+86" : "-48,-53,-59,-66,-74,+74";
-        } else if (classe === "Seniores") {
-            options = isMale ? "-60,-67,-75,-84,+84" : "-50,-55,-61,-68,+68";
-        } else if (classe === "Ragazzi") {
-            options = "-32,-37,-42,-47,+47";
-        } else if (classe === "Fanciulli") {
-            options = "-22,-27,-32,-37,+37";
-        }
+        if (classe === "Esordienti") options = isMale ? "-40,-45,-50,-55,+55" : "-42,-47,-52,+52";
+        else if (classe === "Cadetti") options = isMale ? "-47,-52,-57,-63,-70,-78,+78" : "-42,-47,-54,-61,-68,+68";
+        else if (classe === "Juniores") options = isMale ? "-50,-55,-61,-68,-76,-86,+86" : "-48,-53,-59,-66,-74,+74";
+        else if (classe === "Seniores") options = isMale ? "-60,-67,-75,-84,+84" : "-50,-55,-61,-68,+68";
+        else if (classe === "Ragazzi") options = "-32,-37,-42,-47,+47";
+        else if (classe === "Fanciulli") options = "-22,-27,-32,-37,+37";
 
         options.split(',').forEach(o => {
             weightField.innerHTML += `<option value="${o}">${isMale ? 'M' : 'F'} ${o} Kg</option>`;
@@ -42,14 +34,11 @@ window.updateWeightCategoryOptions = function(classe, gender, specialty) {
     }
 };
 
-// ================================================================================
-// 2. CALCOLO AUTOMATICO ATTRIBUTI
-// ================================================================================
 window.calculateAthleteAttributes = function(birthDate, gender) {
+    if (!birthDate) return;
     const birthYear = new Date(birthDate).getFullYear();
     const classeSelect = document.getElementById('classe');
     const specialtySelect = document.getElementById('specialty');
-    const beltSelect = document.getElementById('belt');
     
     let classe = "Master";
     if (birthYear >= 2018) classe = "Bambini";
@@ -63,82 +52,64 @@ window.calculateAthleteAttributes = function(birthDate, gender) {
     if (classeSelect) classeSelect.innerHTML = `<option value="${classe}">${classe}</option>`;
 
     if (specialtySelect) {
-        let specs = classe === "Bambini" ? 
-            `<option value="Percorso-Kata">Percorso-Kata</option><option value="Percorso-Palloncino">Percorso-Palloncino</option>` :
+        let specs = (classe === "Bambini" || classe === "Fanciulli") ? 
+            `<option value="Percorso-Kata">Percorso-Kata</option><option value="Percorso-Palloncino">Percorso-Palloncino</option><option value="Kata">Kata</option><option value="Kumite">Kumite</option>` :
             `<option value="Kata">Kata</option><option value="Kumite">Kumite</option><option value="ParaKarate">ParaKarate</option>`;
         specialtySelect.innerHTML = specs;
         
-        // Trigger iniziale pesi
-        updateWeightCategoryOptions(classe, gender, specialtySelect.value);
-        specialtySelect.onchange = () => updateWeightCategoryOptions(classe, gender, specialtySelect.value);
+        window.updateWeightCategoryOptions(classe, gender, specialtySelect.value);
+        specialtySelect.onchange = () => window.updateWeightCategoryOptions(classe, gender, specialtySelect.value);
     }
 };
 
 // ================================================================================
-// 3. FUNZIONI ADMIN (RISOLUZIONE REFERENCEERROR)
+// 2. LOGICA ADMIN: MOSTRA/NASCONDI PANNELLO CREAZIONE
+// ================================================================================
+async function checkAdminStatus() {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Recuperiamo la società dell'utente
+        const { data: society } = await supabase.from('societa').select('*').eq('user_id', user.id).single();
+        
+        // Se la società ha il flag is_admin (o se vuoi filtrarlo per ID specifico)
+        const adminArea = document.getElementById('adminArea');
+        if (society && (society.is_admin === true || society.nome.includes("ORGANIZZATORE"))) {
+            adminArea.style.display = 'block';
+        } else {
+            adminArea.style.display = 'none';
+        }
+    } catch (err) {
+        console.error("Errore controllo admin:", err);
+    }
+}
+
+// ================================================================================
+// 3. OPERAZIONI DATABASE
 // ================================================================================
 window.handleCreateEvent = async function() {
-    const nomeInput = document.getElementById("eventName");
-    const dataInput = document.getElementById("eventDate");
-    const luogoInput = document.getElementById("eventLocation");
+    const nome = document.getElementById("eventName").value;
+    const dataEv = document.getElementById("eventDate").value;
+    const luogo = document.getElementById("eventLocation").value;
 
-    if (!nomeInput.value || !dataInput.value) {
-        return alert("Nome e Data sono obbligatori per creare l'evento.");
-    }
+    if (!nome || !dataEv) return alert("Nome e Data obbligatori");
 
     try {
-        // Recupero l'utente loggato
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) throw new Error("Sessione scaduta. Effettua di nuovo il login.");
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: society } = await supabase.from('societa').select('id').eq('user_id', user.id).single();
 
-        // Recupero l'ID reale della società
-        const { data: society, error: socError } = await supabase
-            .from('societa')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
+        const { error } = await supabase.from('eventi').insert([{
+            nome: nome,
+            data_evento: dataEv,
+            luogo: luogo || "Da definire",
+            societa_organizzatrice_id: society.id
+        }]);
 
-        if (socError || !society) {
-            throw new Error("Impossibile trovare la società associata al tuo profilo admin.");
-        }
-
-        // Inserimento con gestione colonne extra
-        const { error: insertError } = await supabase
-            .from('eventi')
-            .insert([{
-                nome: nomeInput.value.trim(),
-                data_evento: dataInput.value,
-                luogo: luogoInput.value.trim() || "Da definire",
-                societa_organizzatrice_id: society.id,
-                quota_iscrizione: 0, // Evita errore 400 se la colonna è NOT NULL
-                attivo: true         // Se hai una colonna per attivare/disattivare l'evento
-            }]);
-
-        if (insertError) {
-            // Se l'errore è 23505, significa che hai un vincolo UNIQUE sul nome
-            if (insertError.code === '23505') {
-                throw new Error("Esiste già un evento con questo nome.");
-            }
-            throw insertError;
-        }
-
-        alert("Evento creato con successo!");
+        if (error) throw error;
+        alert("Evento Creato!");
         location.reload();
-
-    } catch (err) {
-        console.error("DEBUG CREAZIONE EVENTO:", err);
-        alert("Attenzione: " + err.message);
-    }
-};
-
-window.populateEventSelector = async function() {
-    const sel = document.getElementById('eventSelector');
-    if (!sel) return;
-    const { data } = await supabase.from('eventi').select('*').order('data_evento', { ascending: false });
-    sel.innerHTML = '<option value="">-- Seleziona Gara --</option>';
-    data?.forEach(ev => {
-        sel.innerHTML += `<option value="${ev.id}">${ev.nome}</option>`;
-    });
+    } catch (err) { alert("Errore: " + err.message); }
 };
 
 window.fetchAthletes = async function() {
@@ -147,7 +118,7 @@ window.fetchAthletes = async function() {
     if (!eventId || !list) return;
 
     const { data, error } = await supabase.from('atleti').select('*').eq('event_id', eventId);
-    if (error) return console.error(error);
+    if (error) return;
 
     list.innerHTML = '';
     data?.forEach(a => {
@@ -156,18 +127,33 @@ window.fetchAthletes = async function() {
             <td>${a.classe}</td>
             <td>${a.weight_category || 'N/A'}</td>
             <td>${a.specialty}</td>
+            <td><button onclick="window.deleteAthlete('${a.id}')" class="btn btn-danger btn-sm">Elimina</button></td>
         </tr>`;
     });
 };
 
+window.deleteAthlete = async function(id) {
+    if (!confirm("Eliminare l'atleta?")) return;
+    await supabase.from('atleti').delete().eq('id', id);
+    window.fetchAthletes();
+};
+
+window.populateEventSelector = async function() {
+    const sel = document.getElementById('eventSelector');
+    if (!sel) return;
+    const { data } = await supabase.from('eventi').select('*').order('data_evento', { ascending: false });
+    sel.innerHTML = '<option value="">-- Seleziona Gara --</option>';
+    data?.forEach(ev => { sel.innerHTML += `<option value="${ev.id}">${ev.nome}</option>`; });
+};
+
 // ================================================================================
-// 5. LISTENERS E INVIO FORM ATLETA
+// 4. INIT
 // ================================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    checkAdminStatus(); // Controlla se mostrare il pannello Admin
     window.populateEventSelector();
     
-    const eventSel = document.getElementById('eventSelector');
-    if (eventSel) eventSel.addEventListener('change', window.fetchAthletes);
+    document.getElementById('eventSelector')?.addEventListener('change', window.fetchAthletes);
 
     const bday = document.getElementById('birthdate');
     const gend = document.getElementById('gender');
@@ -179,13 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         try {
-            const user = await supabase.auth.getUser();
-            const { data: society } = await supabase.from('societa').select('id').eq('user_id', user.data.user.id).single();
+            const { data: { user } } = await supabase.auth.getUser();
+            const { data: society } = await supabase.from('societa').select('id').eq('user_id', user.id).single();
             const eventId = document.getElementById('eventSelector').value;
-
-            if (!eventId) return alert("Seleziona un evento prima di registrare l'atleta!");
 
             const payload = {
                 first_name: document.getElementById('firstName').value,
@@ -202,12 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { error } = await supabase.from('atleti').insert([payload]);
             if (error) throw error;
-
-            alert("Atleta registrato con successo!");
+            alert("Atleta registrato!");
             window.fetchAthletes();
             document.getElementById('athleteForm').reset();
-        } catch (err) {
-            alert("Errore registrazione: " + err.message);
-        }
+        } catch (err) { alert(err.message); }
     });
 });
