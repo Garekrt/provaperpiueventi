@@ -90,6 +90,14 @@
             position: sticky;
             top: 20px;
         }
+
+        .admin-box {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border: 1px dashed #DC3545;
+        }
     </style>
 </head>
 
@@ -99,43 +107,36 @@
             <h1>Gestione Atleti Società</h1>
             <div style="text-align: right;">
                 <p>Società: <strong id="societyNameDisplay">Caricamento...</strong></p>
-                <button onclick="signOut()" class="btn btn-warning btn-sm">Logout</button>
+                <button onclick="window.signOut()" class="btn btn-warning btn-sm">Logout</button>
             </div>
         </div>
 
         <div style="padding: 15px; background-color: #e6f7ff; border: 1px solid #91d5ff; border-radius: 5px; margin-bottom: 20px;">
-            <label for="eventSelector">Seleziona Evento per Iscrizione/Visualizzazione:</label>
-            <select id="eventSelector" class="form-control" required>
-                <option value="">Caricamento eventi...</option>
+            <label for="eventSelector">Evento Attivo:</label>
+            <select id="eventSelector">
+                <option value="">-- Caricamento Eventi --</option>
             </select>
+            <small><a href="event_selector.html">Cambia Evento / Gestione Generica</a></small>
         </div>
 
-        <div id="adminEventCreation" style="display:none; background-color: #fff3cd; padding: 20px; border-radius: 5px; margin-bottom: 30px; border: 1px dashed #DC3545;">
+        <div id="adminEventCreation" style="display:none;" class="admin-box">
             <h3 style="color: #DC3545;">[ADMIN MODE] Crea Nuovo Evento</h3>
-            <p style="font-size: 0.8em; color: #DC3545;">ID Società Admin: <span id="adminSocietyIdDisplay">Caricamento...</span></p>
-            <form id="eventForm">
-                <div class="form-row">
-                    <div>
-                        <label for="eventName">Nome Evento:</label>
-                        <input type="text" id="eventName" required>
-                    </div>
-                    <div>
-                        <label for="eventDate">Data Evento:</label>
-                        <input type="date" id="eventDate" required>
-                    </div>
+            <p style="font-size: 0.8em;">ID Società Admin: <span id="adminSocietyIdDisplay">Caricamento...</span></p>
+            <div class="form-row">
+                <div>
+                    <label for="eventName">Nome Evento:</label>
+                    <input type="text" id="eventName">
                 </div>
-                <div class="form-row">
-                    <div>
-                        <label for="eventLocation">Luogo:</label>
-                        <input type="text" id="eventLocation" placeholder="Città, Palazzetto">
-                    </div>
+                <div>
+                    <label for="eventDate">Data Evento:</label>
+                    <input type="date" id="eventDate">
                 </div>
-                <button type="button" onclick="handleCreateEvent()" class="btn btn-danger">Crea Evento</button>
-            </form>
+            </div>
+            <button type="button" onclick="window.handleCreateEvent()" class="btn btn-danger">Crea Evento</button>
         </div>
 
-        <form id="athleteForm">
-            <h3>Iscrizione Atleta</h3>
+        <form id="athleteForm" onsubmit="window.handleRegisterAthlete(event)">
+            <h3>Dati Atleta e Iscrizione</h3>
             <div class="form-row">
                 <div>
                     <label for="firstName">Nome:</label>
@@ -146,6 +147,7 @@
                     <input type="text" id="lastName" required>
                 </div>
             </div>
+
             <div class="form-row">
                 <div>
                     <label for="gender">Sesso:</label>
@@ -160,10 +162,12 @@
                     <input type="date" id="birthdate" required>
                 </div>
             </div>
+
             <div class="form-row">
                 <div>
                     <label for="specialty">Specialità:</label>
                     <select id="specialty" required>
+                        <option value="">Seleziona...</option>
                         <option value="Kata">Kata</option>
                         <option value="Kumite">Kumite</option>
                         <option value="ParaKarate">ParaKarate</option>
@@ -183,26 +187,28 @@
                     </select>
                 </div>
             </div>
+
             <div class="form-row">
                 <div>
-                    <label for="classe">Classe (Auto):</label>
-                    <select id="classe" readonly>
-                        <option value="">Inserisci data nascita</option>
+                    <label for="classe">Classe (Calcolata):</label>
+                    <select id="classe">
+                        <option value="">Inserisci data di nascita</option>
                     </select>
                 </div>
                 <div>
-                    <label for="weightCategory">Peso:</label>
+                    <label for="weightCategory">Cat. di Peso:</label>
                     <select id="weightCategory">
                         <option value="">N/D</option>
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Registra e Iscrivi Atleta</button>
+
+            <button type="submit" class="btn btn-primary">Aggiungi Atleta e Iscrivi all'Evento</button>
         </form>
 
         <hr>
 
-        <h2>Atleti Iscritti all'Evento Selezionato</h2>
+        <h2>Lista Atleti Iscritti</h2>
         <table id="athleteTable">
             <thead>
                 <tr>
@@ -218,11 +224,13 @@
     </div>
 
     <div class="stats-container">
-        <h2>Statistiche</h2>
-        <table class="table table-sm">
-            <tr><td>Kumite:</td><td id="KumiteAthleteCountDisplay">0</td></tr>
-            <tr><td>Kata:</td><td id="KataAthleteCountDisplay">0</td></tr>
-            <tr><td>Para:</td><td id="ParaKarateAthleteCountDisplay">0</td></tr>
+        <h2>Statistiche Evento</h2>
+        <table class="table table-bordered">
+            <tbody>
+                <tr><td>Kumite</td><td id="KumiteAthleteCountDisplay">0</td></tr>
+                <tr><td>Kata</td><td id="KataAthleteCountDisplay">0</td></tr>
+                <tr><td>ParaKarate</td><td id="ParaKarateAthleteCountDisplay">0</td></tr>
+            </tbody>
         </table>
     </div>
 
@@ -230,4 +238,5 @@
     <script src="script.js"></script>
     <script src="script2.js"></script>
 </body>
+
 </html>
