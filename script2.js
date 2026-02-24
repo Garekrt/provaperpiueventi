@@ -130,6 +130,28 @@ window.handleCreateEvent = async function() {
         alert("Attenzione: " + err.message);
     }
 };
+
+4. TABELLA ATLETI E SELETTORE EVENTI
+// ==========================================
+window.populateEventSelector = async function() {
+    const sel = document.getElementById('eventSelector');
+    if (!sel) return;
+    const { data } = await supabase.from('eventi').select('*').order('data_evento', { ascending: false });
+    sel.innerHTML = '<option value="">-- Seleziona Gara --</option>';
+    data?.forEach(ev => sel.innerHTML += `<option value="${ev.id}">${ev.nome}</option>`);
+};
+
+window.fetchAthletes = async function() {
+    const eventId = document.getElementById('eventSelector')?.value;
+    const list = document.getElementById('athleteList');
+    if (!eventId || !list) return;
+
+    const { data } = await supabase.from('atleti').select('*').eq('event_id', eventId);
+    list.innerHTML = '';
+    data?.forEach(a => {
+        list.innerHTML += `<tr><td>${a.first_name} ${a.last_name}</td><td>${a.classe}</td><td>${a.weight_category || 'N/A'}</td></tr>`;
+    });
+};
 // ================================================================================
 // 4. LISTENERS
 // ================================================================================
