@@ -81,53 +81,36 @@ window.handleCreateEvent = async function() {
     const nomeInput = document.getElementById("eventName");
     const dataInput = document.getElementById("eventDate");
     const luogoInput = document.getElementById("eventLocation");
+    
+    // Recuperiamo l'ID della società visualizzato a video
+    const societaId = document.getElementById('adminSocietyIdDisplay').textContent;
 
     if (!nomeInput.value || !dataInput.value) {
-        return alert("Nome e Data sono obbligatori per creare l'evento.");
+        return alert("Nome e Data sono obbligatori.");
+    }
+
+    if (societaId === "Caricamento..." || societaId === "Società non trovata") {
+        return alert("Errore: ID società non disponibile. Attendi il caricamento o controlla la console.");
     }
 
     try {
-        // Recupero l'utente loggato
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) throw new Error("Sessione scaduta. Effettua di nuovo il login.");
-
-        // Recupero l'ID reale della società
-        const { data: society, error: socError } = await supabase
-            .from('societa')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-
-        if (socError || !society) {
-            throw new Error("Impossibile trovare la società associata al tuo profilo admin.");
-        }
-
-        // Inserimento con gestione colonne extra
-        const { error: insertError } = await supabase
+        const { error } = await supabase
             .from('eventi')
             .insert([{
                 nome: nomeInput.value.trim(),
                 data_evento: dataInput.value,
                 luogo: luogoInput.value.trim() || "Da definire",
-                societa_organizzatrice_id: society.id,
-                quota_iscrizione: 0, // Evita errore 400 se la colonna è NOT NULL
-                attivo: true         // Se hai una colonna per attivare/disattivare l'evento
+                societa_organizzatrice_id: societaId
             }]);
 
-        if (insertError) {
-            // Se l'errore è 23505, significa che hai un vincolo UNIQUE sul nome
-            if (insertError.code === '23505') {
-                throw new Error("Esiste già un evento con questo nome.");
-            }
-            throw insertError;
-        }
+        if (error) throw error;
 
         alert("Evento creato con successo!");
         location.reload();
 
     } catch (err) {
-        console.error("DEBUG CREAZIONE EVENTO:", err);
-        alert("Attenzione: " + err.message);
+        console.error("ERRORE DURANTE LA CREAZIONE:", err);
+        alert("Errore: " + err.message);
     }
 };
 // ================================================================================
