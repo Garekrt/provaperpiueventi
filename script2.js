@@ -1,74 +1,110 @@
-// GESTIONE VISIBILITÀ E CONTATORI
-async function updateAllCounters(eventId = null) {
-    const form = document.getElementById('athleteForm');
-    if (form) form.style.display = 'block'; // Forza visibilità
+/**
+ * script2.js - Calcolo Classi, Pesi e Invio Dati
+ */
 
-    if (!eventId) return; // Se non c'è evento, non carica i contatori
+// 1. Calcolo automatico Classe e Specialità in base all'età
+function handleBirthDateChange() {
+    const bDate = document.getElementById('birthdate').value;
+    const gender = document.getElementById('gender').value;
+    if (!bDate) return;
 
-    const specialties = ["Kumite", "Kata", "ParaKarate", "KIDS"];
-    for (const spec of specialties) {
-        const { count } = await supabase.from('iscrizioni_eventi').select('id', { count: 'exact' }).eq('evento_id', eventId);
-        const display = document.getElementById(`${spec}AthleteCountDisplay`);
-        if (display) display.textContent = count || 0;
+    const year = new Date(bDate).getFullYear();
+    let classe = "";
+    
+    // Logica Anno Corrente 2024/2025/2026
+    if (year >= 2020) classe = "Bambini U6";
+    else if (year >= 2018) classe = "Bambini U8";
+    else if (year >= 2016) classe = "Fanciulli";
+    else if (year >= 2014) classe = "Ragazzi";
+    else if (year >= 2012) classe = "Esordienti";
+    else if (year >= 2010) classe = "Cadetti";
+    else if (year >= 2008) classe = "Juniores";
+    else if (year >= 1990) classe = "Seniores";
+    else classe = "Master";
+
+    document.getElementById('classe').value = classe;
+    updateSpecialties(classe);
+    updateWeights(classe, gender, document.getElementById('specialty').value);
+}
+
+function updateSpecialties(classe) {
+    const s = document.getElementById('specialty');
+    s.innerHTML = "";
+    if (classe.includes("Bambini")) {
+        s.innerHTML = `<option value="Percorso-Kata">Percorso-Kata</option><option value="Percorso-Palloncino">Percorso-Palloncino</option><option value="ParaKarate">ParaKarate</option>`;
+    } else {
+        s.innerHTML = `<option value="Kata">Kata</option><option value="Kumite">Kumite</option><option value="ParaKarate">ParaKarate</option>`;
     }
 }
 
-// CATEGORIE DI PESO DETTAGLIATE
-function updateWeightCategoryOptions(classe, gender, specialty) {
-    const weightField = document.getElementById("weightCategory");
-    if (!weightField) return;
-    weightField.innerHTML = "";
-    const isM = (gender === "M" || gender === "Maschio");
+// 2. Logica Pesi (Tutte le categorie)
+function updateWeights(classe, gender, specialty) {
+    const w = document.getElementById('weightCategory');
+    w.innerHTML = "";
+    if (specialty !== "Kumite" && specialty !== "ParaKarate") {
+        w.setAttribute("disabled", "disabled");
+        return;
+    }
+    w.removeAttribute("disabled");
+    const isM = (gender === "M");
 
     if (specialty === "Kumite") {
-        weightField.removeAttribute("disabled");
         if (classe === "Esordienti") {
-            if (isM) {
-                weightField.innerHTML += `<option value="-40">M -40 Kg</option>`;
-                weightField.innerHTML += `<option value="-45">M -45 Kg</option>`;
-                weightField.innerHTML += `<option value="-50">M -50 Kg</option>`;
-                weightField.innerHTML += `<option value="-55">M -55 Kg</option>`;
-                weightField.innerHTML += `<option value="+55">M +55 Kg</option>`;
-            } else {
-                weightField.innerHTML += `<option value="-42">F -42 Kg</option>`;
-                weightField.innerHTML += `<option value="-47">F -47 Kg</option>`;
-                weightField.innerHTML += `<option value="-52">F -52 Kg</option>`;
-                weightField.innerHTML += `<option value="+52">F +52 Kg</option>`;
-            }
-        } 
-        else if (classe === "Cadetti") {
-            if (isM) {
-                weightField.innerHTML += `<option value="-47">M -47 Kg</option>`;
-                weightField.innerHTML += `<option value="-52">M -52 Kg</option>`;
-                weightField.innerHTML += `<option value="-57">M -57 Kg</option>`;
-                weightField.innerHTML += `<option value="-63">M -63 Kg</option>`;
-                weightField.innerHTML += `<option value="-70">M -70 Kg</option>`;
-                weightField.innerHTML += `<option value="-78">M -78 Kg</option>`;
-                weightField.innerHTML += `<option value="+78">M +78 Kg</option>`;
-            } else {
-                weightField.innerHTML += `<option value="-42">F -42 Kg</option>`;
-                weightField.innerHTML += `<option value="-47">F -47 Kg</option>`;
-                weightField.innerHTML += `<option value="-54">F -54 Kg</option>`;
-                weightField.innerHTML += `<option value="-61">F -61 Kg</option>`;
-                weightField.innerHTML += `<option value="-68">F -68 Kg</option>`;
-                weightField.innerHTML += `<option value="+68">F +68 Kg</option>`;
-            }
+            if (isM) ["-40", "-45", "-50", "-55", "+55"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+            else ["-42", "-47", "-52", "+52"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+        } else if (classe === "Cadetti") {
+            if (isM) ["-47", "-52", "-57", "-63", "-70", "-78", "+78"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+            else ["-42", "-47", "-54", "-61", "-68", "+68"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+        } else if (classe === "Juniores") {
+            if (isM) ["-50", "-55", "-61", "-68", "-76", "-86", "+86"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+            else ["-48", "-53", "-59", "-66", "-74", "+74"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+        } else if (classe === "Seniores" || classe === "Master") {
+            if (isM) ["-60", "-67", "-75", "-84", "+84"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+            else ["-50", "-55", "-61", "-68", "+68"].forEach(p => w.innerHTML += `<option value="${p}">${p} Kg</option>`);
+        } else {
+            w.innerHTML = `<option value="Open">Categoria Unica</option>`;
         }
-        // ... (Qui puoi aggiungere tutte le altre classi seguendo lo stesso schema)
     } else if (specialty === "ParaKarate") {
-        weightField.removeAttribute("disabled");
-        weightField.innerHTML += `<option value="K20">K 20</option>`;
-        weightField.innerHTML += `<option value="K21">K 21</option>`;
-        weightField.innerHTML += `<option value="K22">K 22</option>`;
-        weightField.innerHTML += `<option value="K30">K 30</option>`;
-    } else {
-        weightField.setAttribute("disabled", "disabled");
+        ["K21", "K22", "K30"].forEach(k => w.innerHTML += `<option value="${k}">${k}</option>`);
     }
 }
 
-// Inizializzazione
-document.addEventListener('DOMContentLoaded', () => {
+// 3. Invio a Supabase
+async function handleFormSubmit(e) {
+    e.preventDefault();
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event_id');
-    updateAllCounters(eventId);
+
+    // Recupera ID società (Assunto che l'utente sia loggato)
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: soc } = await supabase.from('societa').select('id').eq('user_id', user.id).single();
+
+    const athlete = {
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        birthdate: document.getElementById('birthdate').value,
+        gender: document.getElementById('gender').value,
+        classe: document.getElementById('classe').value,
+        specialty: document.getElementById('specialty').value,
+        belt: document.getElementById('belt').value,
+        weight_category: document.getElementById('weightCategory').value,
+        society_id: soc.id
+    };
+
+    const { data: newAtleta, error: errA } = await supabase.from('atleti').insert([athlete]).select().single();
+    if (errA) return alert("Errore: " + errA.message);
+
+    if (eventId) {
+        await supabase.from('iscrizioni_eventi').insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
+    }
+
+    alert("Atleta registrato con successo!");
+    location.reload();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('birthdate').addEventListener('change', handleBirthDateChange);
+    document.getElementById('gender').addEventListener('change', handleBirthDateChange);
+    document.getElementById('specialty').addEventListener('change', handleBirthDateChange);
+    document.getElementById('athleteForm').addEventListener('submit', handleFormSubmit);
 });
