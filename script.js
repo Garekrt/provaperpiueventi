@@ -1,29 +1,40 @@
-async function fetchEvents() {
-    const container = document.getElementById('eventsList');
-    if (!container) return;
-
-    const { data: eventi, error } = await supabase.from('eventi').select('*');
-    if (error) return console.error(error);
-
-    container.innerHTML = '';
-    eventi.forEach(event => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${event.nome}</td>
-            <td>${new Date(event.data_evento).toLocaleDateString()}</td>
-            <td><button class="btn btn-sm btn-success" onclick="goToAthleteManager('${event.id}')">Seleziona</button></td>
-        `;
-        container.appendChild(row);
-    });
-}
-
-// FUNZIONE GLOBALE DI NAVIGAZIONE
+// 1. Funzione per navigare e passare l'ID evento nell'URL
 function goToAthleteManager(eventId) {
     if (!eventId || eventId === 'null') {
         window.location.href = 'athlete_manager.html';
     } else {
         window.location.href = `athlete_manager.html?event_id=${eventId}`;
     }
+}
+
+// 2. Carica gli eventi dal database
+async function fetchEvents() {
+    const container = document.getElementById('eventsList');
+    if (!container) return;
+
+    const { data: gare, error } = await supabase
+        .from('eventi')
+        .select('*')
+        .order('data_evento', { ascending: true });
+
+    if (error) {
+        container.innerHTML = '<tr><td colspan="4">Errore caricamento dati.</td></tr>';
+        return;
+    }
+
+    container.innerHTML = '';
+    gare.forEach(g => {
+        container.innerHTML += `
+            <tr class="align-middle">
+                <td><strong>${g.nome}</strong></td>
+                <td>${new Date(g.data_evento).toLocaleDateString('it-IT')}</td>
+                <td>${g.luogo || 'Da definire'}</td>
+                <td class="text-end">
+                    <button class="btn btn-primary" onclick="goToAthleteManager('${g.id}')">Seleziona</button>
+                </td>
+            </tr>
+        `;
+    });
 }
 
 document.addEventListener('DOMContentLoaded', fetchEvents);
