@@ -1,13 +1,16 @@
 // Gestione della Registrazione Nuova Società
 document.getElementById('registrationForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // BLOCCA il refresh automatico della pagina
     
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if(submitBtn) submitBtn.disabled = true; // Disabilita il tasto per evitare doppi invii
+
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
     const societyName = document.getElementById('regSocietyName').value;
 
     try {
-        // 1. Creazione utente in Supabase Auth
+        // 1. Chiamata a Supabase Auth
         const { data: authData, error: authError } = await sb.auth.signUp({
             email: email,
             password: password,
@@ -18,23 +21,20 @@ document.getElementById('registrationForm')?.addEventListener('submit', async (e
 
         if (authError) throw authError;
 
-        if (authData.user) {
-            // 2. Inserimento nei metadati della tabella 'societa' (opzionale se hai una tabella dedicata)
-            const { error: dbError } = await sb.from('societa').insert([
-                { 
-                    user_id: authData.user.id, 
-                    nome: societyName, 
-                    email: email 
-                }
-            ]);
-
-            if (dbError) throw dbError;
-
-            alert("Registrazione completata! Controlla la tua email per confermare l'account.");
-            location.reload();
+        // 2. Se arriviamo qui, la registrazione ha avuto successo
+        if (authData) {
+            alert("✅ Società inserita con successo!\n\nPer favore, controlla la tua casella email (" + email + ") e clicca sul link di conferma per attivare l'account.");
+            
+            // Opzionale: pulisce il form invece di cambiare pagina
+            e.target.reset();
+            
+            // Se vuoi rimandarlo al login dopo che ha letto l'alert:
+            // window.location.href = 'index.html'; 
         }
     } catch (error) {
-        console.error("Errore durante la registrazione:", error.message);
-        alert("Impossibile creare la società: " + error.message);
+        console.error("Errore:", error.message);
+        alert("❌ Errore durante la creazione: " + error.message);
+    } finally {
+        if(submitBtn) submitBtn.disabled = false; // Riabilita il tasto
     }
 });
