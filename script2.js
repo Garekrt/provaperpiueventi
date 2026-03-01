@@ -1,82 +1,11 @@
-// script2.js
 const ADMIN_ID = "f5c8f562-6178-4956-89ff-a6d1e3b32514";
 
 async function handleLogout() {
-    await supabaseClient.auth.signOut();
+    await sb.auth.signOut();
     window.location.href = 'index.html';
 }
 
-// Inizializzazione con protezione
-async function initManager() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    // Una volta confermato l'utente, carichiamo la griglia
-    fetchRegistrations();
-}
-
-async function fetchRegistrations() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const eventId = urlParams.get('event_id');
-    const container = document.getElementById('registrationsList');
-    if (!eventId || !container) return;
-
-    const { data: { user } } = await supabaseClient.auth.getUser();
-
-    // Query con JOIN sulla tabella atleti
-    let query = supabaseClient
-        .from('iscrizioni_eventi')
-        .select(`
-            id,
-            atleti ( id, first_name, last_name, classe, specialty, belt, created_by, weight_category )
-        `)
-        .eq('evento_id', eventId);
-
-    // Se non sei l'admin, vedi solo i TUOI atleti
-    if (user.id !== ADMIN_ID) {
-        query = query.eq('atleti.created_by', user.id);
-    }
-
-    const { data: iscrizioni, error } = await query;
-
-    if (error) {
-        console.error("Errore fetch:", error);
-        container.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Errore nel caricamento dei dati</td></tr>';
-        return;
-    }
-
-    container.innerHTML = '';
-    document.getElementById('counter').innerText = iscrizioni.length;
-
-    iscrizioni.forEach(item => {
-        const a = item.atleti;
-        if (!a) return; 
-        
-        container.innerHTML += `
-            <tr>
-                <td><strong>${a.last_name} ${a.first_name}</strong></td>
-                <td><span class="badge bg-secondary">${a.classe}</span></td>
-                <td>${a.specialty}</td>
-                <td>${a.weight_category || 'N/A'}</td>
-                <td>${a.belt}</td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRegistration('${item.id}')">Elimina</button>
-                </td>
-            </tr>`;
-    });
-}
-
-// Funzione eliminazione
-async function deleteRegistration(id) {
-    if (!confirm("Cancellare questa iscrizione?")) return;
-    const { error } = await supabaseClient.from('iscrizioni_eventi').delete().eq('id', id);
-    if (!error) fetchRegistrations();
-}
-
-// Logica Pesi (Ripristinata)
+// Logica Pesi e Classi (Script 2 Vecchio)
 function handleDataChange() {
     const bDate = document.getElementById('birthdate').value;
     const gender = document.getElementById('gender').value;
@@ -84,22 +13,73 @@ function handleDataChange() {
     if (!bDate) return;
 
     const year = new Date(bDate).getFullYear();
-    let classe = year >= 2012 ? "Esordienti" : (year >= 2010 ? "Cadetti" : "Senior");
+    let classe = "";
+    if (year >= 2012) classe = "Esordienti";
+    else if (year >= 2010) classe = "Cadetti";
+    else classe = "Senior";
     document.getElementById('classe').value = classe;
 
     const w = document.getElementById('weightCategory');
-    if (specialty === "Kumite") {
-        w.disabled = false;
-        w.innerHTML = '<option value="-40">-40kg</option><option value="-50">-50kg</option><option value="+50">+50kg</option>';
-    } else {
-        w.disabled = true;
+    if (specialty === "Kata") {
         w.innerHTML = '<option value="N/A">N/A</option>';
+        w.disabled = true;
+    } else {
+        w.disabled = false;
+        let options = classe === "Esordienti" ? "-38,-45,+45" : "Open";
+        w.innerHTML = options.split(',').map(o => `<option value="${o}">${o}kg</option>`).join('');
     }
 }
 
-// Avvio
+async function fetchRegistrations() {
+    const eventId = new URLSearchParams(window.location.search).get('event_id');
+    if (!eventId) return;
+
+    const { data: iscritti } = await sb.from('iscrizioni_eventi').select('id, atleti(*)').eq('evento_id', eventId);
+    const container = document.getElementById('registrationsList');
+    if (container) {
+        container.innerHTML = iscritti.map(i => `
+            <tr>
+                <td>${i.atleti.last_name} ${i.atleti.first_name}</td>
+                <td>${i.atleti.classe}</td>
+                <td>${i.atleti.weight_category}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="deleteReg('${i.id}')">Elimina</button></td>
+            </tr>`).join('');
+    }
+}
+
+// FUNZIONE REGISTRAZIONE CORRETTA
+document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const eventId = new URLSearchParams(window.location.search).get('event_id');
+    if (!eventId) return alert("Devi selezionare un evento!");
+
+    const { data: { user } } = await sb.auth.getUser();
+
+    const athlete = {
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        birthdate: document.getElementById('birthdate').value,
+        classe: document.getElementById('classe').value,
+        weight_category: document.getElementById('weightCategory').value,
+        created_by: user.id
+    };
+
+    const { data: newAtleta, error } = await sb.from('atleti').insert([athlete]).select().single();
+    
+    if (error) {
+        alert("Errore registrazione: " + error.message);
+    } else {
+        await sb.from('iscrizioni_eventi').insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
+        alert("Atleta Iscritto!");
+        location.reload();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    initManager();
+    sb.auth.getUser().then(({data}) => { 
+        if(!data.user) window.location.href='index.html'; 
+        else fetchRegistrations(); 
+    });
     document.getElementById('birthdate')?.addEventListener('change', handleDataChange);
     document.getElementById('specialty')?.addEventListener('change', handleDataChange);
 });
