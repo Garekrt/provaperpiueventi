@@ -20,6 +20,17 @@
                     <div class="col-md-3"><input type="text" id="lastName" class="form-control" placeholder="Cognome" required></div>
                     <div class="col-md-3"><input type="date" id="birthdate" class="form-control" required></div>
                     <div class="col-md-3">
+                        <div class="col-md-4">
+    <label>Peso</label>
+    <select id="weightCategory" class="form-select" disabled>
+        <option value="">-- Seleziona Peso --</option>
+    </select>
+</div>
+
+<div id="lockOverlay" style="display:none;" class="alert alert-danger mt-3 text-center">
+    <strong>Attenzione:</strong> Devi selezionare una gara dalla pagina precedente per poter iscrivere atleti.
+    <br><a href="event_selector.html" class="btn btn-danger btn-sm mt-2">Torna alla selezione gare</a>
+</div>
                         <select id="gender" class="form-select">
                             <option value="M">Maschio</option>
                             <option value="F">Femmina</option>
