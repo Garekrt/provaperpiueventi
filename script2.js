@@ -98,3 +98,40 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchRegistrations();
     document.getElementById('birthdate').addEventListener('change', updateClass);
 });
+// --- 6. VISUALIZZAZIONE TABELLA COMPLETA ---
+async function fetchAthletes() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+
+    const { data: society } = await sb.from('societa').select('id, nome').eq('user_id', user.id).single();
+    if (society) {
+        currentSocietyId = society.id;
+        document.getElementById('societyNameDisplay').textContent = society.nome;
+        
+        const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', society.id);
+        const list = document.getElementById('athleteList');
+        if (list) {
+            list.innerHTML = '';
+            athletes?.forEach(a => {
+                const row = list.insertRow();
+                row.innerHTML = `
+                    <td>${a.first_name} ${a.last_name}</td>
+                  <td>${a.classe}</td>
+                  <td>${a.specialty}</td>
+                   <td>${a.belt}</td>
+                    <td>${a.gender}</td>
+                   <td>${a.weight_category || '-'}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="removeAthlete('${a.id}')">Elimina</button></td>
+                `;
+            });
+        }
+    }
+    await updateAllCounters();
+}
+
+async function removeAthlete(id) {
+    if (confirm("Eliminare definitivamente questo atleta?")) {
+        await sb.from('atleti').delete().eq('id', id);
+        fetchAthletes();
+    }
+}
