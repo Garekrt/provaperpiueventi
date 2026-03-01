@@ -1,20 +1,29 @@
 // script.js
 const ADMIN_ID = "f5c8f562-6178-4956-89ff-a6d1e3b32514";
 
-function goToAthleteManager(eventId) {
-    if (!eventId || eventId === 'null') {
-        window.location.href = 'athlete_manager.html';
-    } else {
-        window.location.href = `athlete_manager.html?event_id=${eventId}`;
-    }
+// 1. Gestione Logout
+async function handleLogout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
 }
 
-async function checkAdminStatus() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user && user.id === ADMIN_ID) {
+// 2. Controllo Utente e Inizializzazione
+async function initPage() {
+    const { data: { user }, error } = await supabaseClient.auth.getUser();
+    
+    if (!user || error) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Se è admin, mostra il tasto per creare eventi
+    if (user.id === ADMIN_ID) {
         const btn = document.getElementById('adminAddEventBtn');
         if (btn) btn.style.display = 'inline-block';
     }
+
+    // Solo ora carichiamo gli eventi
+    fetchEvents();
 }
 
 async function fetchEvents() {
@@ -27,7 +36,7 @@ async function fetchEvents() {
         .order('data_evento', { ascending: true });
 
     if (error) {
-        container.innerHTML = '<tr><td colspan="4">Errore caricamento dati.</td></tr>';
+        console.error("Errore download eventi:", error);
         return;
     }
 
@@ -45,27 +54,9 @@ async function fetchEvents() {
     });
 }
 
-// Gestione invio nuovo evento
-document.getElementById('addEventForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const nuovoEvento = {
-        nome: document.getElementById('eventTitle').value,
-        data_evento: document.getElementById('eventDate').value,
-        luogo: document.getElementById('eventLocation').value
-    };
+function goToAthleteManager(eventId) {
+    window.location.href = eventId ? `athlete_manager.html?event_id=${eventId}` : 'athlete_manager.html';
+}
 
-    const { error } = await supabaseClient.from('eventi').insert([nuovoEvento]);
-
-    if (error) {
-        alert("Errore durante il salvataggio: " + error.message);
-    } else {
-        alert("Evento creato con successo!");
-        location.reload(); // Ricarica la lista
-    }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    fetchEvents();
-    checkAdminStatus();
-});
+// Avvio
+document.addEventListener('DOMContentLoaded', initPage);
