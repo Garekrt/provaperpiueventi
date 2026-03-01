@@ -1,4 +1,4 @@
-// 1. Funzione per navigare e passare l'ID evento nell'URL
+// script.js
 function goToAthleteManager(eventId) {
     if (!eventId || eventId === 'null') {
         window.location.href = 'athlete_manager.html';
@@ -7,12 +7,11 @@ function goToAthleteManager(eventId) {
     }
 }
 
-// 2. Carica gli eventi dal database
 async function fetchEvents() {
     const container = document.getElementById('eventsList');
     if (!container) return;
 
-    const { data: gare, error } = await supabase
+    const { data: gare, error } = await supabaseClient
         .from('eventi')
         .select('*')
         .order('data_evento', { ascending: true });
@@ -32,8 +31,7 @@ async function fetchEvents() {
                 <td class="text-end">
                     <button class="btn btn-primary" onclick="goToAthleteManager('${g.id}')">Seleziona</button>
                 </td>
-            </tr>
-        `;
+            </tr>`;
     });
 }
 
