@@ -8,7 +8,12 @@ async function handleLogout() {
 
 // 2. Inizializzazione e Protezione
 async function initPage() {
-    // Verifichiamo l'utente
+    // Controllo se supabase è caricato
+    if (typeof supabase === 'undefined') {
+        console.error("Supabase non è caricato. Controlla l'ordine dei tag <script>.");
+        return;
+    }
+
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (!user || error) {
@@ -16,36 +21,38 @@ async function initPage() {
         return;
     }
 
-    // Se è admin (tu), mostra il tasto aggiunta
-    if (user.id === ADMIN_ID) {
-        document.getElementById('adminAddEventBtn').style.display = 'block';
+    // Mostra il tasto admin se l'ID corrisponde
+    const adminBtn = document.getElementById('adminAddEventBtn');
+    if (user.id === ADMIN_ID && adminBtn) {
+        adminBtn.style.display = 'block';
     }
 
-    // Carica la tabella
-    await fetchEvents();
+    // Carica gli eventi
+    fetchEvents();
 }
 
 // 3. Caricamento Eventi
 async function fetchEvents() {
     const container = document.getElementById('eventsList');
+    if (!container) return;
+
     const { data: gare, error } = await supabase
         .from('eventi')
         .select('*')
         .order('data_evento', { ascending: true });
 
     if (error) {
-        console.error("Errore:", error);
-        container.innerHTML = '<tr><td colspan="4 text-center">Errore nel caricamento.</td></tr>';
+        container.innerHTML = '<tr><td colspan="4" class="text-center">Errore nel caricamento dati.</td></tr>';
         return;
     }
 
     container.innerHTML = '';
     gare.forEach(g => {
         container.innerHTML += `
-            <tr>
+            <tr class="align-middle">
                 <td><strong>${g.nome}</strong></td>
                 <td>${new Date(g.data_evento).toLocaleDateString('it-IT')}</td>
-                <td>${g.luogo || 'N/D'}</td>
+                <td>${g.luogo || 'Da definire'}</td>
                 <td class="text-end">
                     <button class="btn btn-primary btn-sm" onclick="goToAthleteManager('${g.id}')">Seleziona</button>
                 </td>
@@ -53,10 +60,9 @@ async function fetchEvents() {
     });
 }
 
-// 4. Aggiunta Nuovo Evento
+// 4. Creazione Evento (Admin)
 document.getElementById('addEventForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
     const nuovoEvento = {
         nome: document.getElementById('eventTitle').value,
         data_evento: document.getElementById('eventDate').value,
@@ -64,18 +70,12 @@ document.getElementById('addEventForm')?.addEventListener('submit', async (e) =>
     };
 
     const { error } = await supabase.from('eventi').insert([nuovoEvento]);
-
-    if (error) {
-        alert("Errore: " + error.message);
-    } else {
-        alert("Gara creata!");
-        location.reload();
-    }
+    if (error) alert(error.message);
+    else location.reload();
 });
 
 function goToAthleteManager(eventId) {
     window.location.href = `athlete_manager.html?event_id=${eventId}`;
 }
 
-// Avvia tutto al caricamento
 document.addEventListener('DOMContentLoaded', initPage);
