@@ -2,56 +2,51 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Karate Manager - Selezione Gara</title>
+    <title>Gestione Iscrizioni</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-dark bg-primary mb-4">
         <div class="container">
-            <span class="navbar-brand">Karate Manager</span>
-            <div>
-                <button id="adminAddEventBtn" class="btn btn-success btn-sm me-2" style="display:none;" data-bs-toggle="modal" data-bs-target="#addEventModal">+ Nuova Gara</button>
-                <button onclick="handleLogout()" class="btn btn-outline-danger btn-sm">Esci</button>
-            </div>
+            <button onclick="location.href='event_selector.html'" class="btn btn-light btn-sm">← Indietro</button>
+            <span class="navbar-brand">Iscrizione Atleti</span>
+            <button onclick="handleLogout()" class="btn btn-outline-light btn-sm">Esci</button>
         </div>
     </nav>
 
     <div class="container">
-        <div class="card shadow border-0">
-            <div class="card-header bg-white"><h4>Gare in Programma</h4></div>
+        <div id="lockOverlay" class="alert alert-danger text-center" style="display:none;">Seleziona una gara prima!</div>
+        
+        <div class="card shadow-sm mb-4" id="formCard">
             <div class="card-body">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Gara</th><th>Data</th><th>Luogo</th><th class="text-end">Azione</th></tr>
-                    </thead>
-                    <tbody id="eventsList"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="addEventModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="addEventForm">
-                    <div class="modal-header"><h5>Nuova Gara</h5></div>
-                    <div class="modal-body">
-                        <input type="text" id="eventTitle" class="form-control mb-2" placeholder="Nome" required>
-                        <input type="date" id="eventDate" class="form-control mb-2" required>
-                        <input type="text" id="eventLocation" class="form-control" placeholder="Luogo" required>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-success">Salva</button>
-                    </div>
+                <form id="athleteForm" class="row g-3">
+                    <div class="col-md-4"><label>Nome</label><input type="text" id="firstName" class="form-control" required></div>
+                    <div class="col-md-4"><label>Cognome</label><input type="text" id="lastName" class="form-control" required></div>
+                    <div class="col-md-4"><label>Data Nascita</label><input type="date" id="birthdate" class="form-control" required></div>
+                    <div class="col-md-3"><label>Sesso</label><select id="gender" class="form-select"><option value="M">M</option><option value="F">F</option></select></div>
+                    <div class="col-md-3"><label>Specialità</label><select id="specialty" class="form-select"><option value="Kata">Kata</option><option value="Kumite">Kumite</option></select></div>
+                    <div class="col-md-3"><label>Classe</label><input type="text" id="classe" class="form-control" readonly></div>
+                    <div class="col-md-3"><label>Peso</label><select id="weightCategory" class="form-select" disabled></select></div>
+                    <div class="col-12"><button type="submit" class="btn btn-success w-100">Iscrivi Atleta</button></div>
                 </form>
             </div>
         </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between">
+                <span>Atleti Iscritti</span>
+                <span class="badge bg-primary" id="counter">0</span>
+            </div>
+            <table class="table m-0">
+                <thead><tr><th>Atleta</th><th>Classe</th><th>Peso</th><th>Azione</th></tr></thead>
+                <tbody id="registrationsList"></tbody>
+            </table>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
-    <script src="script.js"></script>
+    <script src="script2.js"></script>
 </body>
 </html>
