@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Selezione Gara</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark mb-4">
@@ -14,15 +15,53 @@
     </nav>
     <div class="container">
         <div class="card shadow border-0">
-            <div class="card-header d-flex justify-content-between">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Gare disponibili</h4>
                 <button id="adminAddEventBtn" class="btn btn-success btn-sm" style="display:none;" data-bs-toggle="modal" data-bs-target="#addEventModal">+ Nuova Gara</button>
             </div>
             <div class="card-body">
-                <table class="table"><tbody id="eventsList"></tbody></table>
+                <table class="table">
+                    <thead>
+                        <tr><th>Gara</th><th>Data</th><th class="text-end">Azione</th></tr>
+                    </thead>
+                    <tbody id="eventsList"></tbody>
+                </table>
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="addEventForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Aggiungi Nuova Gara</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nome Gara</label>
+                            <input type="text" id="eventTitle" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Data</label>
+                            <input type="date" id="eventDate" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Luogo</label>
+                            <input type="text" id="eventLocation" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Salva Gara</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script> 
