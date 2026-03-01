@@ -1,82 +1,92 @@
 // script2.js
 const ADMIN_ID = "f5c8f562-6178-4956-89ff-a6d1e3b32514";
 
-// --- 1. FUNZIONE PER POPOLARE LA TABELLA (GRIGLIA) ---
-async function fetchAthletes() {
-    // 1. Recupera l'utente loggato
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
+// --- 1. CONTROLLO EVENTO OBBLIGATORIO ---
+function checkEventSelected() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('event_id');
+    const form = document.getElementById('athleteForm');
+    const overlay = document.getElementById('lockOverlay');
 
-    const list = document.getElementById('registrationsList'); // ID corretto della tabella
-    if (!list) return;
-
-    let query = supabaseClient.from('atleti').select('*');
-
-    // 2. Filtro Privacy: se non è l'admin, vede solo i propri atleti
-    if (user.id !== ADMIN_ID) {
-        query = query.eq('created_by', user.id);
+    if (!eventId || eventId === 'null') {
+        if (form) form.style.opacity = "0.3";
+        if (form) form.style.pointerEvents = "none"; // Disabilita click
+        if (overlay) overlay.style.display = "block";
+        return null;
     }
+    return eventId;
+}
 
-    const { data: athletes, error } = await query;
+// --- 2. LOGICA VECCHIA PESI (dal tuo script2.txt) ---
+function updateWeights(classe, gender, specialty) {
+    const w = document.getElementById('weightCategory');
+    if (!w) return;
 
-    if (error) {
-        console.error("Errore nel caricamento atleti:", error);
+    if (specialty === "Kata" || specialty.includes("Percorso")) {
+        w.innerHTML = '<option value="N/A">N/A (Kata)</option>';
+        w.disabled = true;
         return;
     }
 
-    // 3. Popolamento HTML
-    list.innerHTML = '';
-    athletes?.forEach(a => {
-        const row = list.insertRow();
-        row.innerHTML = `
-            <td><strong>${a.last_name} ${a.first_name}</strong></td>
-            <td><span class="badge bg-secondary">${a.classe}</span></td>
-            <td>${a.specialty}</td>
-            <td>${a.belt}</td>
-            <td>${a.gender}</td>
-            <td class="text-end">
-                <button class="btn btn-danger btn-sm" onclick="removeAthlete('${a.id}')">Elimina</button>
-            </td>
-        `;
-    });
+    w.disabled = false;
+    let options = "";
 
-    // Aggiorna contatore
-    const counter = document.getElementById('counter');
-    if (counter) counter.innerText = athletes.length;
-}
-
-// --- 2. ELIMINAZIONE ATLETA ---
-async function removeAthlete(id) {
-    if (confirm("Eliminare definitivamente questo atleta?")) {
-        const { error } = await supabaseClient.from('atleti').delete().eq('id', id);
-        if (error) alert("Errore durante l'eliminazione");
-        fetchAthletes(); // Ricarica la tabella
+    if (classe === "Esordienti") {
+        options = gender === "M" 
+            ? "-38,-43,-48,-53,-58,-63,-68,+68" 
+            : "-35,-42,-47,-54,-62,+62";
+    } else if (classe === "Cadetti") {
+        options = gender === "M" 
+            ? "-47,-52,-57,-63,-70,+70" 
+            : "-42,-47,-54,-61,+61";
+    } else {
+        options = "Open";
     }
+
+    w.innerHTML = options.split(',').map(o => `<option value="${o}">${o} kg</option>`).join('');
 }
 
-// --- 3. CALCOLO AUTOMATICO CLASSE ---
-function updateClass() {
+// --- 3. AGGIORNAMENTO AUTOMATICO ---
+function handleDataChange() {
     const bDate = document.getElementById('birthdate').value;
+    const gender = document.getElementById('gender').value;
     if (!bDate) return;
+
     const year = new Date(bDate).getFullYear();
-    
-    // Esempio logica classi
     let classe = "";
-    if (year >= 2012) classe = "Esordienti";
+    
+    // Tua vecchia logica classi
+    if (year >= 2020) classe = "Bambini U6";
+    else if (year >= 2018) classe = "Bambini U8";
+    else if (year >= 2016) classe = "Fanciulli";
+    else if (year >= 2014) classe = "Ragazzi";
+    else if (year >= 2012) classe = "Esordienti";
     else if (year >= 2010) classe = "Cadetti";
-    else classe = "Senior/Master";
+    else if (year >= 2008) classe = "Juniores";
+    else if (year >= 1990) classe = "Seniores";
+    else classe = "Master";
 
     document.getElementById('classe').value = classe;
+
+    // Aggiorna specialità
+    const s = document.getElementById('specialty');
+    const oldVal = s.value;
+    s.innerHTML = classe.includes("Bambini") 
+        ? `<option value="Percorso">Percorso</option><option value="Kata">Kata</option>`
+        : `<option value="Kata">Kata</option><option value="Kumite">Kumite</option>`;
     
-    const spec = document.getElementById('specialty');
-    spec.innerHTML = `<option value="Kata">Kata</option><option value="Kumite">Kumite</option>`;
+    if (oldVal) s.value = oldVal;
+
+    updateWeights(classe, gender, s.value);
 }
 
-// --- 4. INVIO NUOVO ATLETA ---
+// --- 4. INVIO DATI ---
 document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const eventId = checkEventSelected();
+    if (!eventId) return; // Blocco ulteriore di sicurezza
+
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return alert("Devi essere loggato!");
 
     const athlete = {
         first_name: document.getElementById('firstName').value,
@@ -86,21 +96,33 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         classe: document.getElementById('classe').value,
         specialty: document.getElementById('specialty').value,
         belt: document.getElementById('belt').value,
-        created_by: user.id // Assicurati che questa colonna esista su Supabase
+        weight_category: document.getElementById('weightCategory').value, // Nuovo campo
+        created_by: user.id
     };
 
-    const { error } = await supabaseClient.from('atleti').insert([athlete]);
+    const { data: newAtleta, error: errA } = await supabaseClient.from('atleti').insert([athlete]).select().single();
     
-    if (error) {
-        alert("Errore salvataggio: " + error.message);
+    if (newAtleta) {
+        await supabaseClient.from('iscrizioni_eventi').insert([{ 
+            atleta_id: newAtleta.id, 
+            evento_id: eventId 
+        }]);
+        alert("Atleta Iscritto con successo!");
+        location.reload(); 
     } else {
-        e.target.reset();
-        fetchAthletes(); // Ricarica la tabella dopo l'inserimento
+        alert("Errore: " + errA.message);
     }
 });
 
 // --- 5. INIZIALIZZAZIONE ---
 document.addEventListener('DOMContentLoaded', () => {
-    fetchAthletes();
-    document.getElementById('birthdate')?.addEventListener('change', updateClass);
+    checkEventSelected();
+    
+    const bDateInput = document.getElementById('birthdate');
+    const genderInput = document.getElementById('gender');
+    const specialtyInput = document.getElementById('specialty');
+
+    bDateInput?.addEventListener('change', handleDataChange);
+    genderInput?.addEventListener('change', handleDataChange);
+    specialtyInput?.addEventListener('change', handleDataChange);
 });
