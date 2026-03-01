@@ -7,11 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-dark shadow-sm mb-4">
+    <nav class="navbar navbar-dark bg-dark mb-4">
         <div class="container">
             <span class="navbar-brand">Karate Manager</span>
-            <div class="d-flex align-items-center">
-                <button id="adminAddEventBtn" class="btn btn-success btn-sm me-3" style="display:none;" data-bs-toggle="modal" data-bs-target="#addEventModal">+ Nuova Gara</button>
+            <div>
+                <button id="adminAddEventBtn" class="btn btn-success btn-sm me-2" style="display:none;" data-bs-toggle="modal" data-bs-target="#addEventModal">+ Nuova Gara</button>
                 <button onclick="handleLogout()" class="btn btn-outline-danger btn-sm">Esci</button>
             </div>
         </div>
@@ -19,51 +19,30 @@
 
     <div class="container">
         <div class="card shadow border-0">
-            <div class="card-header bg-white border-bottom py-3">
-                <h4 class="mb-0 text-dark">Gare in Programma</h4>
-            </div>
+            <div class="card-header bg-white"><h4>Gare in Programma</h4></div>
             <div class="card-body">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Evento</th>
-                            <th>Data</th>
-                            <th>Luogo</th>
-                            <th class="text-end">Azione</th>
-                        </tr>
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Gara</th><th>Data</th><th>Luogo</th><th class="text-end">Azione</th></tr>
                     </thead>
-                    <tbody id="eventsList">
-                        </tbody>
+                    <tbody id="eventsList"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="addEventModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Crea Nuovo Evento</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
                 <form id="addEventForm">
+                    <div class="modal-header"><h5>Nuova Gara</h5></div>
                     <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Nome Gara</label>
-                            <input type="text" id="eventTitle" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Data</label>
-                            <input type="date" id="eventDate" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Luogo</label>
-                            <input type="text" id="eventLocation" class="form-control" required>
-                        </div>
+                        <input type="text" id="eventTitle" class="form-control mb-2" placeholder="Nome" required>
+                        <input type="date" id="eventDate" class="form-control mb-2" required>
+                        <input type="text" id="eventLocation" class="form-control" placeholder="Luogo" required>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                        <button type="submit" class="btn btn-success">Salva Evento</button>
+                        <button type="submit" class="btn btn-success">Salva</button>
                     </div>
                 </form>
             </div>
