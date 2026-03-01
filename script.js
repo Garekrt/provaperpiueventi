@@ -12,7 +12,8 @@ async function initPage() {
         return;
     }
     if (user.id === ADMIN_ID) {
-        document.getElementById('adminAddEventBtn').style.display = 'inline-block';
+        const btn = document.getElementById('adminAddEventBtn');
+        if (btn) btn.style.display = 'inline-block';
     }
     fetchEvents();
 }
@@ -20,6 +21,7 @@ async function initPage() {
 async function fetchEvents() {
     const { data: gare } = await sb.from('eventi').select('*').order('data_evento');
     const container = document.getElementById('eventsList');
+    if (!container) return;
     container.innerHTML = gare.map(g => `
         <tr>
             <td>${g.nome}</td>
