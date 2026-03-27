@@ -48,7 +48,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async (e
             {                
                 nome: socName, 
                 email: email,
-                user_id: authData.user.id 
+                id: authData.user.id 
             }
         ]);
 
