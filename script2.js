@@ -61,29 +61,34 @@ async function fetchRegistrations() {
 
 document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // 1. Controllo Sessione (Risolve il TypeError)
-    const { data: { user }, error: authError } = await sb.auth.getUser();
-    if (!user || authError) {
-        alert("Sessione scaduta. Effettua nuovamente il login.");
+
+    // 1. RECUPERO UTENTE CON CONTROLLO (Risolve il TypeError)
+    const { data: { user }, error: userError } = await sb.auth.getUser();
+
+    if (!user || userError) {
+        alert("Errore: Sessione scaduta. Effettua di nuovo il login.");
         window.location.href = 'index.html';
         return;
     }
 
     const eventId = new URLSearchParams(window.location.search).get('event_id');
-    
-    // 2. Preparazione dati
+    if (!eventId) {
+        alert("Errore: Nessuna gara selezionata.");
+        return;
+    }
+
+    // 2. PREPARAZIONE DATI
     const athlete = {
-        first_name: document.getElementById('firstName').value,
-        last_name: document.getElementById('lastName').value,
+        first_name: document.getElementById('firstName').value.trim(),
+        last_name: document.getElementById('lastName').value.trim(),
         birthdate: document.getElementById('birthdate').value,
         classe: document.getElementById('classe').value,
         weight_category: document.getElementById('weightCategory').value,
-        society_id: user.id 
+        society_id: user.id // Usiamo l'ID dell'utente loggato
     };
 
     try {
-        // 3. Inserimento Atleta (Gestione errore 409)
+        // 3. INSERIMENTO ATLETA (Gestione errore 409)
         const { data: newAtleta, error: aErr } = await sb
             .from('atleti')
             .insert([athlete])
@@ -91,27 +96,29 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
             .single();
 
         if (aErr) {
-            if (aErr.code === '23505') {
-                throw new Error("Questo atleta è già registrato nel database della tua società.");
+            // Se l'errore è un duplicato o conflitto
+            if (aErr.code === '23505' || aErr.code === '409') {
+                throw new Error("Questo atleta risulta già iscritto dalla tua società.");
             }
             throw aErr;
         }
-        
-        // 4. Iscrizione all'evento
+
+        // 4. ISCRIZIONE ALL'EVENTO
         const { error: iErr } = await sb
             .from('iscrizioni_eventi')
             .insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
-            
+
         if (iErr) throw iErr;
 
-        alert("Atleta iscritto correttamente!");
+        alert("Atleta iscritto con successo!");
         location.reload();
 
     } catch (err) {
-        alert("Errore: " + err.message);
-        console.error("Dettaglio errore:", err);
+        console.error("Errore completo:", err);
+        alert("Impossibile completare l'iscrizione: " + err.message);
     }
 });
+
 document.getElementById('birthdate').addEventListener('change', (e) => {
     const year = new Date(e.target.value).getFullYear();
     document.getElementById('classe').value = year >= 2012 ? "Esordienti" : "Senior";
