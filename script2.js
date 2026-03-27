@@ -1,5 +1,3 @@
-const ADMIN_ID = "f5c8f562-6178-4956-89ff-a6d1e3b32514";
-
 // Funzione per ottenere l'ID gara dall'URL (usata da più parti)
 function getEventId() {
     return new URLSearchParams(window.location.search).get('event_id');
