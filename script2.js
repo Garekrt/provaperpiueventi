@@ -8,10 +8,7 @@ async function fetchRegistrations() {
         .select('id, atleti(*)')
         .eq('evento_id', gid);
 
-    if (error) {
-        console.error("Errore fetch:", error);
-        return;
-    }
+    if (error) return console.error("Errore fetch:", error);
 
     const list = document.getElementById('registrationsList');
     if (list && iscritti) {
@@ -41,14 +38,18 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         return;
     }
 
-    // ABBIAMO CAMBIATO society_id in user_id per combaciare con il tuo DB
+    // MAPPATURA ESATTA SULLE TUE COLONNE:
+    // society_id, first_name, last_name, gender, birthday, classe, speciality, belt, weight_category
     const atleta = {
         first_name: document.getElementById('firstName').value.trim(),
         last_name: document.getElementById('lastName').value.trim(),
-        birthdate: document.getElementById('birthdate').value,
+        birthday: document.getElementById('birthdate').value, // Nel DB è 'birthday'
+        gender: document.getElementById('gender')?.value || 'M',
         classe: document.getElementById('classe').value,
+        speciality: document.getElementById('specialty')?.value || 'Kumite',
+        belt: document.getElementById('belt')?.value || 'Bianca',
         weight_category: document.getElementById('weightCategory').value,
-        user_id: user.id  // <--- CAMBIATO QUI
+        society_id: user.id // Nella tabella ATLETI si chiama 'society_id'
     };
 
     try {
@@ -57,8 +58,7 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         
         if (aErr) {
             console.error("Errore Dettagliato:", aErr);
-            // Se l'errore persiste, ci dice perché
-            throw new Error("Errore DB Atleti: " + aErr.message);
+            throw new Error("Errore inserimento atleta: " + aErr.message);
         }
 
         // 2. Iscrizione alla gara
@@ -68,7 +68,7 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
 
         if (iErr) throw iErr;
 
-        alert("Atleta iscritto!");
+        alert("Atleta iscritto con successo!");
         location.reload();
 
     } catch (err) {
