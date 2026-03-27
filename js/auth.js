@@ -68,5 +68,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async (e
         // SOLO SE ARRIVIAMO QUI mostriamo il successo
         alert("✅ Registrazione effettuata con successo!\nControlla la tua email per confermare l'account.");
         e.target.reset();
+    // Reindirizzamento alla home di login
+        window.location.href = 'index.html';
     }
 });
