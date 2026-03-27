@@ -1,11 +1,11 @@
 const ADMIN_ID = "f5c8f562-6178-4956-89ff-a6d1e3b32514";
 
-async function handleLogout() {
-    await sb.auth.signOut();
-    window.location.href = 'index.html';
+// Funzione per ottenere l'ID gara dall'URL (usata da più parti)
+function getEventId() {
+    return new URLSearchParams(window.location.search).get('event_id');
 }
 
-function updateWeights() {
+async function updateWeights() {
     const classe = document.getElementById('classe').value;
     const specialty = document.getElementById('specialty').value;
     const gender = document.getElementById('gender').value;
@@ -23,34 +23,19 @@ function updateWeights() {
     }
 }
 
-async function deleteReg(regId) {
-    if (confirm("Sei sicuro di voler eliminare questa iscrizione?")) {
-        const { error } = await sb
-            .from('iscrizioni_eventi')
-            .delete()
-            .eq('id', regId);
-
-        if (error) {
-            alert("Errore durante l'eliminazione: " + error.message);
-        } else {
-            alert("Iscrizione eliminata!");
-            fetchRegistrations();
-        }
-    }
-}
-
 async function fetchRegistrations() {
-    const eventId = new URLSearchParams(window.location.search).get('event_id');
-    if (!eventId) { 
+    const currentEventId = getEventId();
+    if (!currentEventId) { 
         document.getElementById('lockOverlay').style.display = 'block'; 
         return; 
     }
 
-    const { data: iscritti } = await sb.from('iscrizioni_eventi').select('id, atleti(*)').eq('evento_id', eventId);
-    const container = document.getElementById('registrationsList');
+    const { data: iscritti } = await sb.from('iscrizioni_eventi')
+        .select('id, atleti(*)')
+        .eq('evento_id', currentEventId);
+
     document.getElementById('counter').innerText = iscritti.length;
-    
-    container.innerHTML = iscritti.map(i => `
+    document.getElementById('registrationsList').innerHTML = iscritti.map(i => `
         <tr>
             <td>${i.atleti.last_name} ${i.atleti.first_name}</td>
             <td>${i.atleti.classe}</td>
@@ -59,53 +44,41 @@ async function fetchRegistrations() {
         </tr>`).join('');
 }
 
+async function deleteReg(regId) {
+    if (confirm("Eliminare iscrizione?")) {
+        await sb.from('iscrizioni_eventi').delete().eq('id', regId);
+        fetchRegistrations();
+    }
+}
+
 document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const { data: { user } } = await sb.auth.getUser();
+    
+    if (!user) { alert("Sessione scaduta"); return; }
 
-    // 1. RECUPERO UTENTE CON CONTROLLO (Risolve il TypeError)
-    const { data: { user }, error: userError } = await sb.auth.getUser();
-
-    if (!user || userError) {
-        alert("Errore: Sessione scaduta. Effettua di nuovo il login.");
-        window.location.href = 'index.html';
-        return;
-    }
-
-    const eventId = new URLSearchParams(window.location.search).get('event_id');
-    if (!eventId) {
-        alert("Errore: Nessuna gara selezionata.");
-        return;
-    }
-
-    // 2. PREPARAZIONE DATI
     const athlete = {
-        first_name: document.getElementById('firstName').value.trim(),
-        last_name: document.getElementById('lastName').value.trim(),
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
         birthdate: document.getElementById('birthdate').value,
         classe: document.getElementById('classe').value,
         weight_category: document.getElementById('weightCategory').value,
-        society_id: user.id // Usiamo l'ID dell'utente loggato
+        society_id: user.id 
     };
-const eventId = new URLSearchParams(window.location.search).get('event_id');
 
     try {
         const { data: newAtleta, error: aErr } = await sb.from('atleti').insert([athlete]).select().single();
-        
-        if (aErr) {
-            if (aErr.code === '23503') {
-                throw new Error("Errore critico: La tua società non è registrata correttamente nel database. Contatta l'assistenza.");
-            }
-            throw aErr;
-        }
+        if (aErr) throw aErr;
 
-        await sb.from('iscrizioni_eventi').insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
-        alert("Atleta iscritto!");
+        await sb.from('iscrizioni_eventi').insert([{ atleta_id: newAtleta.id, evento_id: getEventId() }]);
+        alert("Iscritto!");
         location.reload();
     } catch (err) {
-        alert(err.message);
+        alert("Errore: " + err.message);
     }
 });
-document.getElementById('birthdate').addEventListener('change', (e) => {
+
+document.getElementById('birthdate')?.addEventListener('change', (e) => {
     const year = new Date(e.target.value).getFullYear();
     document.getElementById('classe').value = year >= 2012 ? "Esordienti" : "Senior";
     updateWeights();
@@ -113,10 +86,7 @@ document.getElementById('birthdate').addEventListener('change', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     sb.auth.getUser().then(({data}) => { 
-        if(!data.user) {
-            window.location.href = 'index.html'; 
-        } else {
-            fetchRegistrations(); 
-        }
+        if(!data.user) window.location.href = 'index.html'; 
+        else fetchRegistrations(); 
     });
 });
