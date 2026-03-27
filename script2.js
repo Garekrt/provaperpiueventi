@@ -59,27 +59,59 @@ async function fetchRegistrations() {
         </tr>`).join('');
 }
 
-document.getElementById('athleteForm').addEventListener('submit', async (e) => {
+document.getElementById('athleteForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const eventId = new URLSearchParams(window.location.search).get('event_id');
-    const { data: { user } } = await sb.auth.getUser();
+    
+    // 1. Controllo Sessione (Risolve il TypeError)
+    const { data: { user }, error: authError } = await sb.auth.getUser();
+    if (!user || authError) {
+        alert("Sessione scaduta. Effettua nuovamente il login.");
+        window.location.href = 'index.html';
+        return;
+    }
 
+    const eventId = new URLSearchParams(window.location.search).get('event_id');
+    
+    // 2. Preparazione dati
     const athlete = {
         first_name: document.getElementById('firstName').value,
         last_name: document.getElementById('lastName').value,
         birthdate: document.getElementById('birthdate').value,
         classe: document.getElementById('classe').value,
         weight_category: document.getElementById('weightCategory').value,
-        society_id: user.id
+        society_id: user.id 
     };
 
-    const { data: newAtleta } = await sb.from('atleti').insert([athlete]).select().single();
-    await sb.from('iscrizioni_eventi').insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
-    
-    alert("Atleta iscritto!");
-    location.reload();
-});
+    try {
+        // 3. Inserimento Atleta (Gestione errore 409)
+        const { data: newAtleta, error: aErr } = await sb
+            .from('atleti')
+            .insert([athlete])
+            .select()
+            .single();
 
+        if (aErr) {
+            if (aErr.code === '23505') {
+                throw new Error("Questo atleta è già registrato nel database della tua società.");
+            }
+            throw aErr;
+        }
+        
+        // 4. Iscrizione all'evento
+        const { error: iErr } = await sb
+            .from('iscrizioni_eventi')
+            .insert([{ atleta_id: newAtleta.id, evento_id: eventId }]);
+            
+        if (iErr) throw iErr;
+
+        alert("Atleta iscritto correttamente!");
+        location.reload();
+
+    } catch (err) {
+        alert("Errore: " + err.message);
+        console.error("Dettaglio errore:", err);
+    }
+});
 document.getElementById('birthdate').addEventListener('change', (e) => {
     const year = new Date(e.target.value).getFullYear();
     document.getElementById('classe').value = year >= 2012 ? "Esordienti" : "Senior";
