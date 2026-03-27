@@ -1,6 +1,6 @@
 const ALLOWED_ADMINS = [
     "f5c8f562-6178-4956-89ff-a6d1e3b32514", // ID Utente 1
-    "INSERISCI_QUI_SECONDO_ID"              // ID Utente 2 (opzionale)
+    "ff995ba0-7587-4123-a747-0dfa8024ab1c"              // ID Utente 2 (opzionale)
 ];
 
 async function checkAdmin() {
