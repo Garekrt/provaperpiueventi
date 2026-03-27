@@ -8,7 +8,7 @@ async function fetchRegistrations() {
         .select('id, atleti(*)')
         .eq('evento_id', gid);
 
-    if (error) return console.error("Errore fetch:", error);
+    if (error) return;
 
     const list = document.getElementById('registrationsList');
     if (list && iscritti) {
@@ -38,37 +38,33 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         return;
     }
 
-    // MAPPATURA ESATTA SULLE TUE COLONNE:
-    // society_id, first_name, last_name, gender, birthday, classe, speciality, belt, weight_category
+    // MAPPATURA SINCRONIZZATA
     const atleta = {
         first_name: document.getElementById('firstName').value.trim(),
         last_name: document.getElementById('lastName').value.trim(),
-        birthday: document.getElementById('birthdate').value, // Nel DB è 'birthday'
+        birthdate: document.getElementById('birthdate').value, // PROVA CON 'birthdate' (con la E)
         gender: document.getElementById('gender')?.value || 'M',
         classe: document.getElementById('classe').value,
         speciality: document.getElementById('specialty')?.value || 'Kumite',
         belt: document.getElementById('belt')?.value || 'Bianca',
         weight_category: document.getElementById('weightCategory').value,
-        society_id: user.id // Nella tabella ATLETI si chiama 'society_id'
+        society_id: user.id 
     };
 
     try {
-        // 1. Inserimento Atleta
         const { data: newAtleta, error: aErr } = await sb.from('atleti').insert([atleta]).select().single();
         
         if (aErr) {
-            console.error("Errore Dettagliato:", aErr);
-            throw new Error("Errore inserimento atleta: " + aErr.message);
+            console.error("Errore DB:", aErr);
+            // Se l'errore dice ancora "Could not find column", cambia 'birthdate' in 'birthday' sopra
+            throw new Error("Errore: " + aErr.message);
         }
 
-        // 2. Iscrizione alla gara
-        const { error: iErr } = await sb.from('iscrizioni_eventi').insert([
+        await sb.from('iscrizioni_eventi').insert([
             { atleta_id: newAtleta.id, evento_id: getGaraId() }
         ]);
 
-        if (iErr) throw iErr;
-
-        alert("Atleta iscritto con successo!");
+        alert("Atleta iscritto!");
         location.reload();
 
     } catch (err) {
