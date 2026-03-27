@@ -1,4 +1,4 @@
-const ADMIN_ID = "823215cb-87c2-438d-9255-6a7df86b9ca4";
+const ADMIN_ID = "ff995ba0-7587-4123-a747-0dfa8024ab1c";
 
 async function init() {
     const { data: { user } } = await sb.auth.getUser();
