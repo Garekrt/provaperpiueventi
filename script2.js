@@ -38,14 +38,14 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         return;
     }
 
-    // MAPPATURA SINCRONIZZATA
+    // MAPPATURA SINCRONIZZATA SUI NOMI COLONNA PIÙ PROBABILI
     const atleta = {
         first_name: document.getElementById('firstName').value.trim(),
         last_name: document.getElementById('lastName').value.trim(),
-        birthdate: document.getElementById('birthdate').value, // PROVA CON 'birthdate' (con la E)
+        birthdate: document.getElementById('birthdate').value, 
         gender: document.getElementById('gender')?.value || 'M',
         classe: document.getElementById('classe').value,
-        speciality: document.getElementById('specialty')?.value || 'Kumite',
+        specialty: document.getElementById('specialty')?.value || 'Kumite', // CAMBIATO DA speciality A specialty
         belt: document.getElementById('belt')?.value || 'Bianca',
         weight_category: document.getElementById('weightCategory').value,
         society_id: user.id 
@@ -56,8 +56,7 @@ document.getElementById('athleteForm')?.addEventListener('submit', async (e) => 
         
         if (aErr) {
             console.error("Errore DB:", aErr);
-            // Se l'errore dice ancora "Could not find column", cambia 'birthdate' in 'birthday' sopra
-            throw new Error("Errore: " + aErr.message);
+            throw new Error("Errore database: " + aErr.message);
         }
 
         await sb.from('iscrizioni_eventi').insert([
