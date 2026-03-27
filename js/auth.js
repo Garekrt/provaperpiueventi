@@ -46,9 +46,9 @@ document.getElementById('registrationForm')?.addEventListener('submit', async (e
         // 2. Inserimento nella tabella 'societa' per avere un record DB
         const { error: dbError } = await sb.from('societa').insert([
             { 
-                id: authData.user.id, // Usiamo lo stesso ID dell'Auth
-                nome: socName, 
-                email: email 
+               nome: socName, 
+                email: email,
+                user_id: authData.user.id // Usiamo lo stesso ID dell'Auth
             }
         ]);
 
