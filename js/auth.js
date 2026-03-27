@@ -23,18 +23,40 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         window.location.href = 'event_selector.html';
     }
 });
-
-// Registrazione
+// Gestione Registrazione in auth.js
 document.getElementById('registrationForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
     const socName = document.getElementById('regSocietyName').value;
 
-    const { data, error } = await sb.auth.signUp({
-        email, password, options: { data: { society_name: socName } }
+    // 1. Creazione Utente Auth
+    const { data: authData, error: authError } = await sb.auth.signUp({
+        email, 
+        password, 
+        options: { data: { society_name: socName } }
     });
 
-    if (error) alert(error.message);
-    else alert("Società registrata! Controlla la mail per confermare.");
+    if (authError) {
+        alert("Errore Auth: " + authError.message);
+        return;
+    }
+
+    if (authData.user) {
+        // 2. Inserimento nella tabella 'societa' per avere un record DB
+        const { error: dbError } = await sb.from('societa').insert([
+            { 
+                id: authData.user.id, // Usiamo lo stesso ID dell'Auth
+                nome: socName, 
+                email: email 
+            }
+        ]);
+
+        if (dbError) {
+            console.error("Errore salvataggio società:", dbError.message);
+        }
+
+        alert("Società registrata correttamente! Controlla la mail per confermare.");
+    }
 });
+
