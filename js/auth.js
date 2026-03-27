@@ -23,40 +23,50 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         window.location.href = 'event_selector.html';
     }
 });
-// Gestione Registrazione in auth.js
 document.getElementById('registrationForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
     const socName = document.getElementById('regSocietyName').value;
 
-    // 1. Creazione Utente Auth
+    // 1. Tenta la registrazione nell'Auth
     const { data: authData, error: authError } = await sb.auth.signUp({
         email, 
         password, 
         options: { data: { society_name: socName } }
     });
 
+    // Se l'auth fallisce (es. email già in uso o password debole)
     if (authError) {
-        alert("Errore Auth: " + authError.message);
-        return;
+        alert("Errore registrazione: " + authError.message);
+        return; // BLOCCA TUTTO QUI
     }
 
     if (authData.user) {
-        // 2. Inserimento nella tabella 'societa' per avere un record DB
+        // 2. Tenta l'inserimento nel database
         const { error: dbError } = await sb.from('societa').insert([
-            { 
-               nome: socName, 
+            {                
+                nome: socName, 
                 email: email,
-                user_id: authData.user.id // Usiamo lo stesso ID dell'Auth
+                user_id: authData.user.id 
             }
         ]);
 
+        // GESTIONE DUPLICATI E ERRORI DB
         if (dbError) {
-            console.error("Errore salvataggio società:", dbError.message);
+            console.error("Errore database:", dbError);
+            
+            // Se l'errore è un duplicato (codice 23505 in PostgreSQL)
+            if (dbError.code === '23505') {
+                alert("Attenzione: Questa società è già registrata nel sistema.");
+            } else {
+                alert("Errore durante il salvataggio dei dati: " + dbError.message);
+            }
+            return; // BLOCCA QUI, non mostrare il successo
         }
 
-        alert("Società registrata correttamente! Controlla la mail per confermare.");
+        // SOLO SE ARRIVIAMO QUI mostriamo il successo
+        alert("✅ Registrazione effettuata con successo!\nControlla la tua email per confermare l'account.");
+        e.target.reset();
     }
 });
-
