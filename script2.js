@@ -70,7 +70,7 @@ document.getElementById('athleteForm').addEventListener('submit', async (e) => {
         birthdate: document.getElementById('birthdate').value,
         classe: document.getElementById('classe').value,
         weight_category: document.getElementById('weightCategory').value,
-        created_by: user.id
+        society_id: user.id
     };
 
     const { data: newAtleta } = await sb.from('atleti').insert([athlete]).select().single();
