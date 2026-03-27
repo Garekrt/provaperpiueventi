@@ -38,7 +38,7 @@ async function fetchGlobalData() {
                 first_name, 
                 last_name, 
                 classe, 
-                weight_category,
+                weight_category),
                 societa ( nome )
             )
         `);
