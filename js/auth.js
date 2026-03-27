@@ -3,6 +3,7 @@ async function handleLogout() {
     window.location.href = 'index.html';
 }
 
+// Login
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -12,6 +13,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     else window.location.href = 'event_selector.html';
 });
 
+// Registrazione
 document.getElementById('registrationForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('regEmail').value;
@@ -22,14 +24,25 @@ document.getElementById('registrationForm')?.addEventListener('submit', async (e
         email, password, options: { data: { society_name: socName } }
     });
 
-    if (authError) return alert("Errore: " + authError.message);
+    if (authError) return alert("Errore Registrazione: " + authError.message);
 
     if (authData.user) {
+        // NOTA: Usiamo 'user_id' perché il tuo database lo richiede espressamente
         const { error: dbError } = await sb.from('societa').insert([
-            { id: authData.user.id, nome: socName, email: email }
+            { 
+                user_id: authData.user.id, 
+                nome: socName, 
+                email: email 
+            }
         ]);
-        if (dbError) console.error("Errore salvataggio società:", dbError);
-        alert("Registrazione effettuata! Conferma l'email per accedere.");
+
+        if (dbError) {
+            console.error("Errore DB:", dbError);
+            alert("Errore configurazione società: " + dbError.message);
+            return;
+        }
+
+        alert("Registrazione completata! Conferma l'email per accedere.");
         window.location.href = 'index.html';
     }
 });
